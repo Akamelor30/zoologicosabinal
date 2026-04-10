@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Lector IoT - Zoológico El Sabinal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(145deg, #1b4d3d 0%, #2d6a4f 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .lector-container {
+            max-width: 760px;
+            width: 100%;
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border: 3px solid #f9b81b;
+        }
+
+        h1 {
+            color: #283618;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 2em;
+            border-bottom: 3px solid #bc6c25;
+            padding-bottom: 15px;
+        }
+
+        .subtitulo {
+            text-align: center;
+            color: #5f6b7a;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .controles-top {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .campo {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .campo label {
+            color: #283618;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .campo input {
+            padding: 12px;
+            border: 2px solid #bc6c25;
+            border-radius: 15px;
+            font-size: 1em;
+        }
+
+        .campo input:focus {
+            outline: none;
+            border-color: #2d6a4f;
+            box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.12);
+        }
+
+        .acciones-camara {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 180px;
+            padding: 14px;
+            border: none;
+            border-radius: 60px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid #f9b81b;
+        }
+
+        .btn-principal {
+            background: linear-gradient(145deg, #2d6a4f, #1b4d3d);
+            color: white;
+        }
+
+        .btn-principal:hover {
+            background: linear-gradient(145deg, #1b4d3d, #0d3b2b);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn-secundario {
+            background: #bc6c25;
+            color: white;
+        }
+
+        .btn-secundario:hover {
+            background: #9b4e1f;
+            transform: translateY(-2px);
+        }
+
+        .btn-limpiar {
+            background: #6c757d;
+            color: white;
+            border-color: #ced4da;
+        }
+
+        .btn-limpiar:hover {
+            background: #5a6268;
+        }
+
+        .reader-wrapper {
+            background: #f8f9fa;
+            border: 3px solid #bc6c25;
+            border-radius: 18px;
+            padding: 15px;
+            margin-bottom: 18px;
+        }
+
+        #reader {
+            width: 100%;
+            min-height: 260px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .manual-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+        .manual-input input {
+            flex: 1;
+            min-width: 240px;
+            padding: 12px;
+            border: 2px solid #bc6c25;
+            border-radius: 15px;
+            font-size: 1em;
+        }
+
+        .manual-input input:focus {
+            outline: none;
+            border-color: #2d6a4f;
+        }
+
+        .resultado {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 8px;
+            font-weight: bold;
+            font-size: 1.15em;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #dee2e6;
+        }
+
+        .aceptado {
+            background: #d4edda;
+            color: #155724;
+            border: 3px solid #28a745;
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.2);
+        }
+
+        .rechazado {
+            background: #f8d7da;
+            color: #721c24;
+            border: 3px solid #dc3545;
+            box-shadow: 0 0 15px rgba(220, 53, 69, 0.2);
+        }
+
+        .cargando {
+            background: #fff3cd;
+            color: #856404;
+            border: 3px solid #ffc107;
+        }
+
+        .info-boleto {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(145deg, #fefae0, #f8f9fa);
+            border-radius: 15px;
+            font-size: 0.95em;
+            border: 2px solid #bc6c25;
+            display: none;
+        }
+
+        .info-boleto h3 {
+            color: #283618;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-left: 5px solid #bc6c25;
+            padding-left: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 14px;
+        }
+
+        .info-grid p {
+            margin: 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9edc9;
+        }
+
+        .detalle-box {
+            margin-top: 15px;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #e9edc9;
+        }
+
+        .detalle-box h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #283618;
+        }
+
+        .detalle-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .detalle-box li {
+            margin-bottom: 6px;
+            color: #283618;
+        }
+
+        .dispositivo-info {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #283618;
+            border-radius: 15px;
+            font-size: 0.95em;
+            color: #f9b81b;
+            border: 2px solid #bc6c25;
+        }
+
+        .dispositivo-info span {
+            color: white;
+            font-weight: bold;
+        }
+
+        .nota {
+            margin-top: 10px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .top-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.link-btn {
+    display: inline-block;
+    text-decoration: none;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 800;
+    border: 2px solid #f9b81b;
+    transition: all 0.25s ease;
+    font-size: 0.95rem;
+}
+
+.link-admin {
+    background: linear-gradient(145deg, #2d6a4f, #1b4d3d);
+    color: white;
+}
+
+.link-admin:hover {
+    background: linear-gradient(145deg, #1b4d3d, #0d3b2b);
+    transform: translateY(-2px);
+}
+
+.link-logout {
+    background: rgba(176, 42, 55, 0.14);
+    color: #721c24;
+    border-color: #dc3545;
+}
+
+.link-logout:hover {
+    background: #b02a37;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.session-box {
+    display: inline-block;
+    margin-bottom: 14px;
+    background: linear-gradient(145deg, #fefae0, #ffffff);
+    border: 2px solid #d4a373;
+    border-radius: 18px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.session-box small {
+    display: block;
+    color: #6b7280;
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+}
+
+.session-box strong {
+    display: block;
+    color: #283618;
+    font-size: 1rem;
+}
+
+.session-box .dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #28a745;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+        @media (max-width: 700px) {
+            .controles-top,
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .manual-input,
+            .acciones-camara {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="lector-container">
+  <div class="top-actions">
+    <a href="/admin.html" class="link-btn link-admin">📊 Volver al panel</a>
+    <a href="/panel-logout" class="link-btn link-logout">🚪 Cerrar sesión</a>
+</div>
+
+<div class="session-box">
+    <small><span class="dot"></span>Sesión activa</small>
+    <strong id="lectorUsername">Cargando usuario...</strong>
+</div>
+
+<h1>🔍 Lector IoT - Zoológico El Sabinal</h1>
+    <p class="subtitulo">Escanea el QR de la compra o captura el folio manualmente</p>
+
+        <div class="controles-top">
+            <div class="campo">
+                <label for="taquilleroId">🧑‍💼 ID del taquillero (opcional)</label>
+                <input type="number" id="taquilleroId" placeholder="Ej. 2">
+            </div>
+
+            <div class="campo">
+                <label for="nombreDispositivo">🖥️ Dispositivo</label>
+                <input type="text" id="nombreDispositivo" value="Lector NETUM / Cámara QR">
+            </div>
+        </div>
+
+        <div class="acciones-camara">
+            <button class="btn btn-principal" onclick="iniciarCamara()">📷 Iniciar cámara</button>
+            <button class="btn btn-secundario" onclick="detenerCamara()">⛔ Detener cámara</button>
+            <button class="btn btn-limpiar" onclick="limpiarPantalla()">🧹 Limpiar</button>
+        </div>
+
+        <div class="reader-wrapper">
+            <div id="reader"></div>
+        </div>
+
+        <div class="manual-input">
+            <input type="text" id="codigoManual" placeholder="Escanea con lector NETUM o escribe folio / QR token..." autofocus>
+            <button class="btn btn-secundario" style="flex: 0 0 170px;" onclick="procesarManual()">Validar</button>
+        </div>
+
+<div id="resultado" class="resultado">
+    Esperando código QR...
+</div>
+
+<div id="debugCodigo" style="margin-top:10px; padding:12px; border-radius:10px; background:#f8f9fa; border:1px solid #ccc; font-family:monospace; font-size:0.95em;">
+    Código leído: ---
+</div>
+
+        <div id="info-boleto" class="info-boleto">
+            <h3>📋 Detalles del acceso</h3>
+
+            <div class="info-grid">
+                <p><strong>Folio:</strong> <span id="folio">-</span></p>
+                <p><strong>Cliente:</strong> <span id="nombreCliente">-</span></p>
+                <p><strong>Email:</strong> <span id="email">-</span></p>
+                <p><strong>Teléfono:</strong> <span id="telefono">-</span></p>
+                <p><strong>Fecha visita:</strong> <span id="fechaVisita">-</span></p>
+                <p><strong>Método de pago:</strong> <span id="metodoPago">-</span></p>
+                <p><strong>Total personas:</strong> <span id="cantidadPersonas">-</span></p>
+                <p><strong>Total pagado:</strong> <span id="total">-</span></p>
+                <p><strong>Fecha acceso:</strong> <span id="fechaAcceso">-</span></p>
+                <p><strong>Estado:</strong> <span id="estadoAcceso">-</span></p>
+            </div>
+
+            <div class="detalle-box">
+                <h4>🎟️ Detalle de la compra</h4>
+                <ul id="listaDetalles">
+                    <li>Sin datos</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="dispositivo-info">
+            🖥️ Dispositivo: <span id="nombreEquipoTexto">Lector NETUM / Cámara QR</span><br>
+            📡 Servidor: <span id="estadoServidor">Verificando...</span><br>
+            ⏱️ Último escaneo: <span id="sincronizacion">---</span>
+        </div>
+
+        <p class="nota">
+            Consejo: deja el cursor en el campo manual para que el lector NETUM escriba directo y valide con Enter.
+        </p>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        const API_BASE = '';
+        let html5QrCode = null;
+        let camaraActiva = false;
+        let procesandoEscaneo = false;
+
+        function mostrarUsuarioLector(username) {
+    const box = document.getElementById('lectorUsername');
+    if (box) {
+        box.textContent = username || 'Usuario desconocido';
+    }
+}
+
+        function money(valor) {
+            return '$' + Number(valor || 0).toFixed(2) + ' MXN';
+        }
+
+        function fechaHoraActual() {
+            return new Date().toLocaleString('es-MX');
+        }
+
+  function limpiarCodigo(codigo) {
+    let limpio = String(codigo || '')
+        .normalize('NFKC')
+        .toUpperCase()
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        // convertir apóstrofes/comillas a guion
+        .replace(/[‘’‚‛´`'"]/g, '-')
+        // convertir guiones raros a guion normal
+        .replace(/[‐-‒–—−]/g, '-')
+        .replace(/\s+/g, '')
+        .replace(/[^A-Z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+    // reconstruir folio aunque venga sin guiones o mal separado
+    const mFolio = limpio.match(/^ZB-?(\d{8})-?([A-Z0-9]{6})$/);
+    if (mFolio) {
+        limpio = `ZB-${mFolio[1]}-${mFolio[2]}`;
+    }
+
+    return limpio;
+}
+
+        function getDispositivo() {
+            const valor = document.getElementById('nombreDispositivo').value.trim();
+            const final = valor || 'Lector NETUM / Cámara QR';
+            document.getElementById('nombreEquipoTexto').textContent = final;
+            return final;
+        }
+
+        function getTaquilleroId() {
+            const valor = document.getElementById('taquilleroId').value.trim();
+            return valor ? Number(valor) : null;
+        }
+        async function verificarSesionPanel() {
+    try {
+        const res = await fetch(`${API_BASE}/api/panel-me`, {
+            credentials: 'same-origin'
+        });
+
+        if (!res.ok) {
+            window.location.href = '/panel-login?next=' + encodeURIComponent('/lector.html');
+            return false;
+        }
+
+        const data = await res.json();
+
+     if (!data.success) {
+    window.location.href = '/panel-login?next=' + encodeURIComponent('/lector.html');
+    return false;
+}
+
+mostrarUsuarioLector(data.user?.username || 'admin');
+return true;
+    } catch (error) {
+        window.location.href = '/panel-login?next=' + encodeURIComponent('/lector.html');
+        return false;
+    }
+}
+
+        function setResultado(texto, tipo = '') {
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.className = 'resultado';
+            if (tipo) resultadoDiv.classList.add(tipo);
+            resultadoDiv.innerHTML = texto;
+        }
+
+        function limpiarPantalla() {
+            setResultado('Esperando código QR...');
+            document.getElementById('info-boleto').style.display = 'none';
+            document.getElementById('codigoManual').value = '';
+            document.getElementById('sincronizacion').textContent = '---';
+            document.getElementById('codigoManual').focus();
+        }
+
+        function renderDetalles(detalles) {
+            const lista = document.getElementById('listaDetalles');
+
+            if (!Array.isArray(detalles) || !detalles.length) {
+                lista.innerHTML = '<li>Sin detalles disponibles</li>';
+                return;
+            }
+
+            lista.innerHTML = detalles.map(item => `
+                <li>${item.nombre} x${item.cantidad} — ${money(item.subtotal)}</li>
+            `).join('');
+        }
+
+        function mostrarInfo(data, aceptado) {
+            const datos = data?.datos || {};
+            const detalles = datos?.detalles || [];
+
+            document.getElementById('folio').textContent = datos.folio || 'N/A';
+            document.getElementById('nombreCliente').textContent = datos.nombre_cliente || 'N/A';
+            document.getElementById('email').textContent = datos.email || 'N/A';
+            document.getElementById('telefono').textContent = datos.telefono || 'N/A';
+            document.getElementById('fechaVisita').textContent = datos.fecha_visita || 'N/A';
+            document.getElementById('metodoPago').textContent = datos.metodo_pago || 'N/A';
+            document.getElementById('cantidadPersonas').textContent = datos.cantidad_personas ?? 'N/A';
+            document.getElementById('total').textContent = datos.total ? money(datos.total) : 'N/A';
+            document.getElementById('fechaAcceso').textContent = fechaHoraActual();
+            document.getElementById('estadoAcceso').textContent = aceptado ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO';
+
+            renderDetalles(detalles);
+
+            document.getElementById('info-boleto').style.display = 'block';
+        }
+
+        async function iniciarCamara() {
+            try {
+                if (camaraActiva) {
+                    setResultado('📷 La cámara ya está activa.');
+                    return;
+                }
+
+                html5QrCode = new Html5Qrcode('reader');
+
+                await html5QrCode.start(
+                    { facingMode: 'environment' },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    async (decodedText) => {
+                        if (procesandoEscaneo) return;
+                        procesandoEscaneo = true;
+
+                        try {
+                            await detenerCamara();
+                            await procesarQR(decodedText);
+                        } finally {
+                            procesandoEscaneo = false;
+                        }
+                    },
+                    () => {}
+                );
+
+                camaraActiva = true;
+                setResultado('📷 Cámara activa. Coloca el QR frente a la cámara.');
+            } catch (error) {
+                console.error('Error al iniciar cámara:', error);
+                setResultado('❌ No se pudo iniciar la cámara.', 'rechazado');
+            }
+        }
+
+        async function detenerCamara() {
+            try {
+                if (html5QrCode && camaraActiva) {
+                    await html5QrCode.stop();
+                    await html5QrCode.clear();
+                }
+            } catch (error) {
+                console.log('Aviso al detener cámara:', error.message);
+            } finally {
+                camaraActiva = false;
+                html5QrCode = null;
+            }
+        }
+
+        async function procesarQR(codigo) {
+             const codigoLimpio = limpiarCodigo(codigo);
+    document.getElementById('debugCodigo').textContent =
+        'Código leído: ' + codigoLimpio + ' | Original: ' + String(codigo);
+
+    console.log('Código original:', codigo);
+    console.log('Código limpio:', codigoLimpio);
+
+            if (!codigoLimpio) {
+                setResultado('❌ Código vacío o inválido.', 'rechazado');
+                return;
+            }
+
+            try {
+                setResultado('⏳ Validando acceso...', 'cargando');
+
+              const response = await fetch(`${API_BASE}/api/validar-qr`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        codigo_qr: codigoLimpio,
+        taquillero_id: getTaquilleroId(),
+        dispositivo: getDispositivo(),
+        observaciones: 'Validación desde lector.html'
+    })
+});
+
+if (response.status === 401) {
+    window.location.href = '/panel-login?next=' + encodeURIComponent('/lector.html');
+    return;
+}
+
+const data = await response.json();
+                console.log('Respuesta del servidor:', data);
+
+                if (data.valido) {
+                    setResultado('✅ ¡ACCESO PERMITIDO!<br>Bienvenido al Zoológico', 'aceptado');
+                    mostrarInfo(data, true);
+                } else {
+                    setResultado(`❌ ${data.mensaje || 'ACCESO DENEGADO'}`, 'rechazado');
+
+                    if (data.datos) {
+                        mostrarInfo(data, false);
+                    } else {
+                        document.getElementById('info-boleto').style.display = 'none';
+                    }
+                }
+
+                document.getElementById('sincronizacion').textContent = fechaHoraActual();
+                document.getElementById('codigoManual').value = '';
+                document.getElementById('codigoManual').focus();
+
+            } catch (error) {
+                console.error('Error al validar QR:', error);
+                setResultado('❌ ERROR DE CONEXIÓN CON EL SERVIDOR', 'rechazado');
+                document.getElementById('sincronizacion').textContent = 'Error';
+                document.getElementById('info-boleto').style.display = 'none';
+            }
+        }
+
+        function procesarManual() {
+            const codigo = document.getElementById('codigoManual').value;
+            if (!codigo.trim()) {
+                setResultado('❌ Ingresa o escanea un código.', 'rechazado');
+                return;
+            }
+
+            procesarQR(codigo);
+        }
+
+        async function verificarServidor() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+
+                if (response.ok && data.ok) {
+                    document.getElementById('estadoServidor').textContent = 'Online ✅';
+                    document.getElementById('estadoServidor').style.color = '#28a745';
+                } else {
+                    document.getElementById('estadoServidor').textContent = 'Offline ❌';
+                    document.getElementById('estadoServidor').style.color = '#dc3545';
+                }
+            } catch {
+                document.getElementById('estadoServidor').textContent = 'Offline ❌';
+                document.getElementById('estadoServidor').style.color = '#dc3545';
+            }
+        }
+
+        document.getElementById('codigoManual').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                procesarManual();
+            }
+        });
+
+        document.getElementById('nombreDispositivo').addEventListener('input', function() {
+            getDispositivo();
+        });
+
+       document.addEventListener('DOMContentLoaded', async function() {
+    const ok = await verificarSesionPanel();
+    if (!ok) return;
+
+    getDispositivo();
+    verificarServidor();
+    setInterval(verificarServidor, 10000);
+    document.getElementById('codigoManual').focus();
+});
+    </script>
+</body>
+</html>

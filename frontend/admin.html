@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🦁 Panel Admin / Taquillero - Zoológico El Sabinal</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #1b4d3d 0%, #2d6a4f 100%);
+      color: #1f2937;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, #1b4332, #081c15);
+      color: white;
+      padding: 22px 18px;
+      border-right: 3px solid #f9b81b;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid rgba(255,255,255,0.15);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      color: #fff;
+    }
+
+    .brand p {
+      margin: 8px 0 0;
+      color: #d8f3dc;
+      font-size: 0.92rem;
+    }
+
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .menu button,
+    .menu a {
+      width: 100%;
+      border: none;
+      text-decoration: none;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      transition: 0.25s ease;
+      border: 2px solid transparent;
+      display: block;
+    }
+
+    .menu button:hover,
+    .menu a:hover,
+    .menu button.active {
+      background: #2d6a4f;
+      border-color: #f9b81b;
+      transform: translateX(4px);
+    }
+
+    .sidebar-note {
+      margin-top: 24px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 14px;
+      border-radius: 16px;
+      color: #d8f3dc;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .main {
+      padding: 24px;
+    }
+
+    .topbar {
+      background: rgba(255,255,255,0.95);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.18);
+      margin-bottom: 20px;
+      border: 2px solid #f9b81b;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      color: #283618;
+      font-size: 1.8rem;
+    }
+
+    .topbar p {
+      margin: 8px 0 0;
+      color: #5f6b7a;
+    }
+
+    .panel {
+      display: none;
+      background: #fff;
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 16px 35px rgba(0,0,0,0.18);
+      border: 2px solid #e9edc9;
+      margin-bottom: 20px;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .panel h3 {
+      margin-top: 0;
+      color: #283618;
+      font-size: 1.45rem;
+      border-left: 8px solid #bc6c25;
+      padding-left: 14px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .card {
+      background: linear-gradient(145deg, #fefae0, #ffffff);
+      border: 2px solid #d4a373;
+      border-radius: 18px;
+      padding: 18px;
+      min-height: 130px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+    }
+
+    .card h4 {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      color: #5f6b7a;
+    }
+
+    .card .value {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: #bc6c25;
+      line-height: 1.1;
+    }
+
+    .card small {
+      display: block;
+      margin-top: 8px;
+      color: #6b7280;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto auto;
+      gap: 12px;
+      margin: 18px 0;
+      align-items: end;
+    }
+
+    .filters.single {
+      grid-template-columns: 1fr auto auto auto;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-weight: 700;
+      color: #283618;
+      font-size: 0.95rem;
+    }
+
+    .field input,
+    .field select {
+      padding: 12px 14px;
+      border: 2px solid #d4a373;
+      border-radius: 14px;
+      font-size: 1rem;
+      background: #fff;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: #2d6a4f;
+      box-shadow: 0 0 0 4px rgba(45,106,79,0.12);
+    }
+
+    .btn {
+      border: none;
+      padding: 12px 18px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 0.95rem;
+      transition: 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(145deg, #2d6a4f, #1b4332);
+      color: white;
+      border: 2px solid #f9b81b;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .btn-secondary {
+      background: #bc6c25;
+      color: white;
+      border: 2px solid #f9b81b;
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 2px solid #e5e7eb;
+      border-radius: 18px;
+      margin-top: 14px;
+      max-height: 430px;
+      overflow-y: auto;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1040px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #283618;
+      color: white;
+      padding: 12px;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    tbody td {
+      padding: 12px;
+      border-bottom: 1px solid #ececec;
+      font-size: 0.95rem;
+      vertical-align: top;
+    }
+
+    tbody tr:hover {
+      background: #faf7ef;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .ok {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .bad {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .warn {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .search-box {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 18px;
+      background: #f8f9fa;
+      border: 2px dashed #bc6c25;
+    }
+
+    .detail-card {
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 18px;
+      background: #fefae0;
+      border: 2px solid #d4a373;
+      display: none;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 14px;
+      margin-top: 10px;
+    }
+
+    .detail-grid div {
+      background: white;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #ececec;
+    }
+
+    .detail-list {
+      margin-top: 14px;
+      background: white;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid #ececec;
+    }
+
+    .detail-list ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .message {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-weight: 700;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.ok {
+      background: #d4edda;
+      color: #155724;
+      border: 2px solid #28a745;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 2px solid #dc3545;
+    }
+
+    .cut-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .cut-item {
+      background: #f8f9fa;
+      border: 2px solid #d4a373;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .cut-item h4 {
+      margin: 0 0 10px;
+      color: #5f6b7a;
+      font-size: 0.92rem;
+    }
+
+    .cut-item .n {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #bc6c25;
+    }
+
+    .tiny-note {
+      margin-top: 10px;
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    
+  .actions-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .btn-danger {
+    background: #b02a37;
+    color: white;
+    border: 2px solid #f5c2c7;
+  }
+
+  .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+  }
+
+  .btn-outline {
+    background: white;
+    color: #283618;
+    border: 2px solid #d4a373;
+  }
+
+  .btn-outline:hover {
+    background: #faf7ef;
+    transform: translateY(-2px);
+  }
+
+  .taquilla-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.taquilla-box {
+  background: #f8f9fa;
+  border: 2px solid #d4a373;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.taquilla-box h4 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  color: #283618;
+  font-size: 1.05rem;
+}
+
+.taquilla-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.categoria-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: white;
+  margin-bottom: 10px;
+}
+
+.categoria-row .cat-nombre {
+  font-weight: 700;
+  color: #283618;
+}
+
+.categoria-row .cat-precio {
+  color: #bc6c25;
+  font-weight: 800;
+}
+
+.categoria-row input {
+  width: 90px;
+  padding: 10px;
+  border: 2px solid #d4a373;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.resumen-taquilla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.resumen-item {
+  background: white;
+  border: 2px solid #d4a373;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.resumen-item h5 {
+  margin: 0 0 8px;
+  color: #5f6b7a;
+  font-size: 0.92rem;
+}
+
+.resumen-item .v {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #bc6c25;
+}
+
+.taquilla-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.resultado-taquilla {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 2px solid #28a745;
+  background: #d4edda;
+  display: none;
+}
+
+.resultado-taquilla.show {
+  display: block;
+}
+
+.resultado-taquilla .qr-wrap {
+  text-align: center;
+  margin: 16px 0;
+}
+
+.resultado-taquilla img {
+  max-width: 220px;
+  border-radius: 16px;
+  border: 4px solid white;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+}
+
+
+@media (max-width: 900px) {
+  .taquilla-layout,
+  .taquilla-grid,
+  .resumen-taquilla {
+    grid-template-columns: 1fr;
+  }
+}
+
+.logout-link {
+  background: rgba(176, 42, 55, 0.18) !important;
+  border: 2px solid rgba(245, 194, 199, 0.45) !important;
+  color: #fff !important;
+}
+
+.logout-link:hover {
+  background: #b02a37 !important;
+  border-color: #f5c2c7 !important;
+  transform: translateX(4px);
+}
+
+
+.topbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.user-chip {
+  min-width: 220px;
+  background: linear-gradient(145deg, #fefae0, #ffffff);
+  border: 2px solid #d4a373;
+  border-radius: 18px;
+  padding: 12px 16px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+  text-align: right;
+}
+
+.user-chip small {
+  display: block;
+  color: #6b7280;
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.user-chip strong {
+  display: block;
+  color: #283618;
+  font-size: 1rem;
+}
+
+.user-chip .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #28a745;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+    @media (max-width: 1200px) {
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .cut-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        height: auto;
+      }
+
+      .filters,
+      .filters.single,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cards,
+      .cut-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>🦁 Panel Sabinal</h1>
+        <p>Admin / Taquillero</p>
+      </div>
+
+      <nav class="menu">
+      <button class="menu-btn active" data-panel="dashboard">📊 Dashboard</button>
+<button class="menu-btn" data-panel="taquilla">🏷️ Venta en taquilla</button>
+<button class="menu-btn" data-panel="ventas">🎟️ Ventas del día</button>
+        <button class="menu-btn" data-panel="accesos">🚪 Historial de accesos</button>
+        <button class="menu-btn" data-panel="buscar">🔎 Buscar por folio</button>
+        <button class="menu-btn" data-panel="corte">💰 Corte básico</button>
+       <a href="/lector.html">📷 Ir al lector QR</a>
+<a href="/">🛒 Ir a la venta pública</a>
+<a href="/panel-logout" class="logout-link">🚪 Cerrar sesión</a>
+      </nav>
+
+      <div class="sidebar-note">
+        Este panel es operativo.  
+        Ya muestra ventas, accesos, corte y búsqueda.  
+        El login real lo armamos en la siguiente vuelta para que no quede de juguete.
+      </div>
+    </aside>
+
+    <main class="main">
+     <section class="topbar">
+  <div class="topbar-row">
+    <div>
+      <h2>Panel de control del Zoológico El Sabinal</h2>
+      <p>Monitoreo de ventas, accesos, búsqueda por folio y corte diario.</p>
+    </div>
+
+    <div class="user-chip">
+      <small><span class="dot"></span>Sesión activa</small>
+      <strong id="panelUsername">Cargando usuario...</strong>
+    </div>
+  </div>
+</section>
+
+      <section class="panel active" id="panel-dashboard">
+        <h3>📊 Dashboard general</h3>
+        <div class="cards">
+          <div class="card">
+            <h4>Ventas hoy</h4>
+            <div class="value" id="cardVentasHoy">0</div>
+            <small>Operaciones registradas</small>
+          </div>
+          <div class="card">
+            <h4>Ingresos hoy</h4>
+            <div class="value" id="cardIngresosHoy">$0</div>
+            <small>Total vendido</small>
+          </div>
+          <div class="card">
+            <h4>Accesos aceptados</h4>
+            <div class="value" id="cardAccesosAceptados">0</div>
+            <small>Entradas válidas</small>
+          </div>
+          <div class="card">
+            <h4>QR pendientes hoy</h4>
+            <div class="value" id="cardPendientes">0</div>
+            <small>Compras sin usar</small>
+          </div>
+          <div class="card">
+            <h4>Más vendido</h4>
+            <div class="value" id="cardMasVendido" style="font-size:1.15rem;">---</div>
+            <small>Categoría más vendida</small>
+          </div>
+        </div>
+        <div class="tiny-note">Actualización automática cada 30 segundos.</div>
+        <div id="msgDashboard" class="message"></div>
+      </section>
+
+      <section class="panel" id="panel-taquilla">
+  <h3>🏷️ Venta en taquilla</h3>
+
+  <div class="taquilla-layout">
+    <div class="taquilla-box">
+      <h4>Datos de la venta</h4>
+
+      <div class="taquilla-grid">
+        <div class="field">
+          <label for="tkNombre">Nombre del cliente</label>
+          <input type="text" id="tkNombre" placeholder="Ej. Juan Pérez">
+        </div>
+
+        <div class="field">
+          <label for="tkTelefono">Teléfono</label>
+          <input type="text" id="tkTelefono" placeholder="Ej. 9631234567">
+        </div>
+
+        <div class="field">
+          <label for="tkEmail">Correo (opcional)</label>
+          <input type="email" id="tkEmail" placeholder="Ej. cliente@gmail.com">
+        </div>
+
+        <div class="field">
+          <label for="tkFecha">Fecha de visita</label>
+          <input type="date" id="tkFecha">
+        </div>
+
+        <div class="field">
+          <label for="tkMetodoPago">Método de pago</label>
+          <select id="tkMetodoPago">
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="pago_en_linea">Pago en línea</option>
+            <option value="cortesia">Cortesía</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="taquilla-actions">
+        <button class="btn btn-secondary" id="btnTkHoy">Usar fecha de hoy</button>
+        <button class="btn btn-secondary" id="btnTkLimpiar">Limpiar</button>
+      </div>
+
+      <div id="msgTaquilla" class="message"></div>
+    </div>
+
+    <div class="taquilla-box">
+      <h4>Boletos a vender</h4>
+      <div id="tkCategoriasWrap">
+        Cargando categorías...
+      </div>
+
+      <div class="resumen-taquilla">
+        <div class="resumen-item">
+          <h5>Total personas</h5>
+          <div class="v" id="tkTotalPersonas">0</div>
+        </div>
+        <div class="resumen-item">
+          <h5>Total a cobrar</h5>
+          <div class="v" id="tkTotalMonto">$0.00</div>
+        </div>
+      </div>
+
+      <div class="taquilla-actions">
+        <button class="btn btn-primary" id="btnTkVender">Generar venta en taquilla</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="resultado-taquilla" id="tkResultado">
+    <h4 style="margin-top:0;">✅ Venta generada correctamente</h4>
+    <div id="tkResumenVenta"></div>
+
+    <div class="qr-wrap">
+      <img id="tkQrImg" src="" alt="QR de la venta">
+    </div>
+
+    <div class="actions-row">
+      <button class="btn btn-primary" id="btnTkDescargarQR">Descargar QR</button>
+      <button class="btn btn-secondary" id="btnTkImprimir">Imprimir comprobante</button>
+      <button class="btn btn-secondary" id="btnTkVerDetalle">Ver en buscar por folio</button>
+    </div>
+  </div>
+</section>
+
+      <section class="panel" id="panel-ventas">
+        <h3>🎟️ Ventas del día</h3>
+
+        <div class="filters">
+          <div class="field">
+            <label for="fechaVentas">Fecha</label>
+            <input type="date" id="fechaVentas">
+          </div>
+          <div class="field">
+            <label for="estadoAccesoVentas">Estado de acceso</label>
+            <select id="estadoAccesoVentas">
+              <option value="">Todos</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="usado">Usado</option>
+              <option value="rechazado">Rechazado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnVentas">Consultar</button>
+          <button class="btn btn-secondary" id="btnVentasHoy">Hoy</button>
+          <button class="btn btn-secondary" id="btnExportarVentas">Exportar CSV</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Cliente</th>
+                <th>Email</th>
+                <th>Fecha visita</th>
+                <th>Personas</th>
+                <th>Total</th>
+                <th>Pago</th>
+                <th>Acceso</th>
+                <th>Canal</th>
+                <th>Escaneos</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyVentas">
+              <tr><td colspan="11">Cargando ventas...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="msgVentas" class="message"></div>
+      </section>
+
+      <section class="panel" id="panel-accesos">
+        <h3>🚪 Historial de accesos</h3>
+
+        <div class="filters">
+          <div class="field">
+            <label for="fechaAccesos">Fecha</label>
+            <input type="date" id="fechaAccesos">
+          </div>
+          <div class="field">
+            <label for="resultadoAcceso">Resultado</label>
+            <select id="resultadoAcceso">
+              <option value="">Todos</option>
+              <option value="aceptado">Aceptado</option>
+              <option value="rechazado">Rechazado</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnAccesos">Consultar</button>
+          <button class="btn btn-secondary" id="btnAccesosHoy">Hoy</button>
+          <button class="btn btn-secondary" id="btnExportarAccesos">Exportar CSV</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha acceso</th>
+                <th>Folio</th>
+                <th>Cliente</th>
+                <th>Email</th>
+                <th>Resultado</th>
+                <th>Dispositivo</th>
+                <th>Motivo rechazo</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAccesos">
+              <tr><td colspan="7">Cargando accesos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="msgAccesos" class="message"></div>
+      </section>
+
+      <section class="panel" id="panel-buscar">
+  <h3>🔎 Buscar venta por folio</h3>
+
+  <div class="search-box">
+    <div class="filters.single">
+      <div class="field">
+        <label for="folioBuscar">Folio</label>
+        <input type="text" id="folioBuscar" placeholder="Ej. ZB-20260401-AAAAAA">
+      </div>
+      <button class="btn btn-primary" id="btnBuscarFolio">Buscar</button>
+      <button class="btn btn-secondary" id="btnLimpiarBusqueda">Limpiar</button>
+    </div>
+
+    <div id="msgBuscar" class="message"></div>
+
+    <div class="detail-card" id="detalleVenta">
+      <h3 style="margin-top:0;">📋 Detalle de la venta</h3>
+
+      <div class="detail-grid" id="detalleGrid"></div>
+
+      <div class="actions-row">
+        <button class="btn btn-primary" id="btnDescargarQRDetalle">Descargar QR</button>
+        <button class="btn btn-secondary" id="btnReimprimirDetalle">Reimprimir comprobante</button>
+        <button class="btn btn-danger" id="btnCancelarVenta">Cancelar venta</button>
+      </div>
+
+      <div class="detail-list">
+        <strong>🎟️ Detalle de compra</strong>
+        <ul id="detalleLista"></ul>
+      </div>
+
+      <div class="detail-list">
+        <strong>🚪 Accesos registrados</strong>
+        <ul id="accesosLista"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+      <section class="panel" id="panel-corte">
+        <h3>💰 Corte básico</h3>
+
+        <div class="filters.single">
+          <div class="field">
+            <label for="fechaCorte">Fecha</label>
+            <input type="date" id="fechaCorte">
+          </div>
+          <button class="btn btn-primary" id="btnCorte">Consultar</button>
+          <button class="btn btn-secondary" id="btnCorteHoy">Hoy</button>
+          <button class="btn btn-secondary" id="btnExportarCorte">Exportar CSV</button>
+        </div>
+
+        <div class="cut-grid">
+          <div class="cut-item">
+            <h4>Total operaciones</h4>
+            <div class="n" id="corteOperaciones">0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Monto total</h4>
+            <div class="n" id="corteMonto">$0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Efectivo</h4>
+            <div class="n" id="corteEfectivo">$0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Tarjeta</h4>
+            <div class="n" id="corteTarjeta">$0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Transferencia</h4>
+            <div class="n" id="corteTransferencia">$0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Pago en línea</h4>
+            <div class="n" id="corteOnline">$0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Accesos aceptados</h4>
+            <div class="n" id="corteAceptados">0</div>
+          </div>
+          <div class="cut-item">
+            <h4>Accesos rechazados</h4>
+            <div class="n" id="corteRechazados">0</div>
+          </div>
+        </div>
+
+        <div id="msgCorte" class="message"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+   const API_BASE = '';
+let ventaActual = null;
+let categoriasTaquilla = [];
+let ventaTaquillaActual = null;
+function mostrarUsuarioPanel(username) {
+  const box = document.getElementById('panelUsername');
+  if (box) {
+    box.textContent = username || 'Usuario desconocido';
+  }
+}
+
+    function todayISO() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function money(value) {
+      return '$' + Number(value || 0).toFixed(2);
+    }
+
+    function setMessage(id, text, type = 'ok') {
+      const box = document.getElementById(id);
+      box.className = `message show ${type}`;
+      box.textContent = text;
+    }
+
+    function clearMessage(id) {
+      const box = document.getElementById(id);
+      box.className = 'message';
+      box.textContent = '';
+    }
+
+    function badgeEstado(valor) {
+      const v = String(valor || '').toLowerCase();
+
+      if (['pagado', 'usado', 'aceptado'].includes(v)) {
+        return `<span class="tag ok">${valor}</span>`;
+      }
+
+      if (['pendiente'].includes(v)) {
+        return `<span class="tag warn">${valor}</span>`;
+      }
+
+      return `<span class="tag bad">${valor}</span>`;
+    }
+
+    function cambiarPanel(nombre) {
+      document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.panel === nombre);
+      });
+
+      document.querySelectorAll('.panel').forEach(panel => {
+        panel.classList.remove('active');
+      });
+
+      document.getElementById(`panel-${nombre}`).classList.add('active');
+    }
+
+    function descargarCSV(nombreArchivo, filas) {
+      if (!filas.length) {
+        return;
+      }
+
+      const encabezados = Object.keys(filas[0]);
+      const csv = [
+        encabezados.join(','),
+        ...filas.map(f =>
+          encabezados.map(k => {
+            const valor = String(f[k] ?? '').replace(/"/g, '""');
+            return `"${valor}"`;
+          }).join(',')
+        )
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function verDetalleDesdeVentas(folio) {
+      cambiarPanel('buscar');
+      document.getElementById('folioBuscar').value = folio;
+      buscarFolio();
+    }
+    function descargarQRDetalle() {
+  if (!ventaActual || !ventaActual.folio) {
+    setMessage('msgBuscar', '❌ Primero busca una venta.', 'error');
+    return;
+  }
+
+  const url = `${API_BASE}/qrs/${encodeURIComponent(ventaActual.folio)}.png`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${ventaActual.folio}.png`;
+  a.click();
+}
+
+function reimprimirDetalle() {
+  if (!ventaActual) {
+    setMessage('msgBuscar', '❌ Primero busca una venta.', 'error');
+    return;
+  }
+
+  const detallesHtml = (ventaActual.detalles || []).length
+    ? ventaActual.detalles.map(d => `
+        <li>${d.nombre} x${d.cantidad} — ${money(d.subtotal)}</li>
+      `).join('')
+    : '<li>Sin detalle</li>';
+
+  const popup = window.open('', '_blank', 'width=900,height=700');
+  popup.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Comprobante ${ventaActual.folio}</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          padding: 24px;
+          color: #222;
+        }
+        .wrap {
+          max-width: 720px;
+          margin: auto;
+          border: 2px solid #d4a373;
+          border-radius: 18px;
+          padding: 24px;
+        }
+        h1 {
+          margin-top: 0;
+          color: #1b4332;
+        }
+        .qr {
+          text-align: center;
+          margin: 20px 0;
+        }
+        .qr img {
+          max-width: 220px;
+          border: 1px solid #ccc;
+          padding: 10px;
+          border-radius: 12px;
+        }
+        .box {
+          background: #f8f9fa;
+          padding: 14px;
+          border-radius: 12px;
+          margin: 10px 0;
+        }
+        ul { margin: 0; padding-left: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="wrap">
+        <h1>🦁 Zoológico El Sabinal</h1>
+        <div class="box"><strong>Folio:</strong> ${ventaActual.folio}</div>
+        <div class="box"><strong>Cliente:</strong> ${ventaActual.nombre_cliente || 'N/A'}</div>
+        <div class="box"><strong>Email:</strong> ${ventaActual.email || 'N/A'}</div>
+        <div class="box"><strong>Teléfono:</strong> ${ventaActual.telefono || 'N/A'}</div>
+        <div class="box"><strong>Fecha visita:</strong> ${ventaActual.fecha_visita ? String(ventaActual.fecha_visita).slice(0,10) : 'N/A'}</div>
+        <div class="box"><strong>Total:</strong> ${money(ventaActual.total)}</div>
+        <div class="box"><strong>Método de pago:</strong> ${ventaActual.metodo_pago || 'N/A'}</div>
+        <div class="box"><strong>Estado pago:</strong> ${ventaActual.estado_pago || 'N/A'}</div>
+        <div class="box"><strong>Estado acceso:</strong> ${ventaActual.estado_acceso || 'N/A'}</div>
+
+        <div class="qr">
+          <img src="${API_BASE}/qrs/${encodeURIComponent(ventaActual.folio)}.png" alt="QR">
+        </div>
+
+        <div class="box">
+          <strong>Detalle de compra</strong>
+          <ul>${detallesHtml}</ul>
+        </div>
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      <\/script>
+    </body>
+    </html>
+  `);
+  popup.document.close();
+}
+
+async function cancelarVentaActual() {
+  if (!ventaActual || !ventaActual.folio) {
+    setMessage('msgBuscar', '❌ Primero busca una venta.', 'error');
+    return;
+  }
+
+  const confirmado = confirm(`¿Seguro que deseas cancelar la venta ${ventaActual.folio}?`);
+  if (!confirmado) return;
+
+  const motivo = prompt('Motivo de cancelación:', 'Cancelación manual desde panel admin');
+  if (motivo === null) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ventas/${encodeURIComponent(ventaActual.folio)}/cancelar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo cancelar la venta');
+    }
+
+    setMessage('msgBuscar', '✅ Venta cancelada correctamente.', 'ok');
+
+    await buscarFolio();
+    await cargarVentas();
+    await cargarDashboard();
+    await cargarCorte();
+  } catch (error) {
+    setMessage('msgBuscar', '❌ ' + error.message, 'error');
+  }
+}
+
+async function cargarCategoriasTaquilla() {
+  clearMessage('msgTaquilla');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/categorias`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudieron cargar las categorías');
+    }
+
+    categoriasTaquilla = data.categorias || [];
+    renderCategoriasTaquilla();
+    recalcularTaquilla();
+  } catch (error) {
+    document.getElementById('tkCategoriasWrap').innerHTML = 'Error cargando categorías.';
+    setMessage('msgTaquilla', '❌ ' + error.message, 'error');
+  }
+}
+
+function renderCategoriasTaquilla() {
+  const wrap = document.getElementById('tkCategoriasWrap');
+
+  if (!categoriasTaquilla.length) {
+    wrap.innerHTML = 'No hay categorías activas.';
+    return;
+  }
+
+  wrap.innerHTML = categoriasTaquilla.map(cat => `
+    <div class="categoria-row">
+      <div>
+        <div class="cat-nombre">${cat.nombre}</div>
+        <small>${cat.clave || ''}</small>
+      </div>
+      <div class="cat-precio">${money(cat.precio)}</div>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value="0"
+        data-categoria-id="${cat.id}"
+        data-precio="${cat.precio}"
+        class="tk-cantidad"
+        oninput="recalcularTaquilla()"
+      >
+    </div>
+  `).join('');
+}
+
+function recalcularTaquilla() {
+  const inputs = document.querySelectorAll('.tk-cantidad');
+  let totalPersonas = 0;
+  let totalMonto = 0;
+
+  inputs.forEach(input => {
+    const cantidad = Number(input.value || 0);
+    const precio = Number(input.dataset.precio || 0);
+
+    totalPersonas += cantidad;
+    totalMonto += cantidad * precio;
+  });
+
+  document.getElementById('tkTotalPersonas').textContent = totalPersonas;
+  document.getElementById('tkTotalMonto').textContent = money(totalMonto);
+}
+
+function limpiarTaquilla() {
+  document.getElementById('tkNombre').value = '';
+  document.getElementById('tkTelefono').value = '';
+  document.getElementById('tkEmail').value = '';
+  document.getElementById('tkFecha').value = todayISO();
+  document.getElementById('tkMetodoPago').value = 'efectivo';
+
+  document.querySelectorAll('.tk-cantidad').forEach(input => {
+    input.value = 0;
+  });
+
+  ventaTaquillaActual = null;
+  document.getElementById('tkResultado').classList.remove('show');
+  clearMessage('msgTaquilla');
+  recalcularTaquilla();
+}
+
+function obtenerDetallesTaquilla() {
+  const inputs = document.querySelectorAll('.tk-cantidad');
+  const detalles = [];
+
+  inputs.forEach(input => {
+    const cantidad = Number(input.value || 0);
+    const categoriaId = Number(input.dataset.categoriaId);
+
+    if (cantidad > 0) {
+      detalles.push({
+        categoria_id: categoriaId,
+        cantidad
+      });
+    }
+  });
+
+  return detalles;
+}
+
+async function venderEnTaquilla() {
+  clearMessage('msgTaquilla');
+
+  const nombre = document.getElementById('tkNombre').value.trim();
+  const telefono = document.getElementById('tkTelefono').value.trim();
+  const emailCapturado = document.getElementById('tkEmail').value.trim();
+  const fecha = document.getElementById('tkFecha').value;
+  const metodoPago = document.getElementById('tkMetodoPago').value;
+
+  const detalles = obtenerDetallesTaquilla();
+
+  if (!fecha) {
+    setMessage('msgTaquilla', '❌ Selecciona la fecha de visita.', 'error');
+    return;
+  }
+
+  if (!detalles.length) {
+    setMessage('msgTaquilla', '❌ Debes seleccionar al menos un boleto.', 'error');
+    return;
+  }
+
+ const emailFinal = emailCapturado || '';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/venta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre_cliente: nombre || 'Cliente de taquilla',
+        email: emailFinal,
+        telefono,
+        fecha_visita: fecha,
+        metodo_pago: metodoPago,
+        canal_venta: 'taquilla',
+        observaciones: 'Venta en taquilla desde panel admin',
+        detalles
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo generar la venta');
+    }
+
+    ventaTaquillaActual = {
+      ...data.venta,
+      detalles: data.detalles || [],
+      nombre_cliente: nombre || 'Cliente de taquilla',
+      telefono,
+      metodo_pago: metodoPago,
+      email: emailFinal
+    };
+
+    document.getElementById('tkResumenVenta').innerHTML = `
+      <p><strong>Folio:</strong> ${data.venta.folio}</p>
+      <p><strong>Total:</strong> ${money(data.venta.total)}</p>
+      <p><strong>Personas:</strong> ${data.venta.cantidad_personas}</p>
+      <p><strong>Fecha visita:</strong> ${data.venta.fecha_visita}</p>
+      <p><strong>Método de pago:</strong> ${metodoPago}</p>
+    `;
+
+    document.getElementById('tkQrImg').src = data.venta.qr_url;
+    document.getElementById('tkResultado').classList.add('show');
+
+    setMessage('msgTaquilla', '✅ Venta en taquilla generada correctamente.', 'ok');
+
+    await cargarDashboard();
+    await cargarVentas();
+    await cargarCorte();
+  } catch (error) {
+    setMessage('msgTaquilla', '❌ ' + error.message, 'error');
+  }
+}
+
+function descargarQRTaquilla() {
+  if (!ventaTaquillaActual || !ventaTaquillaActual.folio) {
+    setMessage('msgTaquilla', '❌ Primero genera una venta.', 'error');
+    return;
+  }
+
+  const a = document.createElement('a');
+  a.href = `${API_BASE}/qrs/${encodeURIComponent(ventaTaquillaActual.folio)}.png`;
+  a.download = `${ventaTaquillaActual.folio}.png`;
+  a.click();
+}
+
+function imprimirVentaTaquilla() {
+  if (!ventaTaquillaActual) {
+    setMessage('msgTaquilla', '❌ Primero genera una venta.', 'error');
+    return;
+  }
+
+  const detallesHtml = (ventaTaquillaActual.detalles || []).length
+    ? ventaTaquillaActual.detalles.map(d => `
+        <li>${d.nombre || 'Boleto'} x${d.cantidad} — ${money(d.subtotal)}</li>
+      `).join('')
+    : '<li>Sin detalle</li>';
+
+  const popup = window.open('', '_blank', 'width=900,height=700');
+  popup.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Comprobante ${ventaTaquillaActual.folio}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
+        .wrap { max-width: 720px; margin: auto; border: 2px solid #d4a373; border-radius: 18px; padding: 24px; }
+        h1 { margin-top: 0; color: #1b4332; }
+        .box { background: #f8f9fa; padding: 14px; border-radius: 12px; margin: 10px 0; }
+        .qr { text-align: center; margin: 20px 0; }
+        .qr img { max-width: 220px; border: 1px solid #ccc; padding: 10px; border-radius: 12px; }
+        ul { margin: 0; padding-left: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="wrap">
+        <h1>🦁 Zoológico El Sabinal</h1>
+        <div class="box"><strong>Folio:</strong> ${ventaTaquillaActual.folio}</div>
+        <div class="box"><strong>Cliente:</strong> ${ventaTaquillaActual.nombre_cliente || 'Cliente de taquilla'}</div>
+        <div class="box"><strong>Email:</strong> ${ventaTaquillaActual.email || 'N/A'}</div>
+        <div class="box"><strong>Teléfono:</strong> ${ventaTaquillaActual.telefono || 'N/A'}</div>
+        <div class="box"><strong>Fecha visita:</strong> ${ventaTaquillaActual.fecha_visita ? String(ventaTaquillaActual.fecha_visita).slice(0,10) : 'N/A'}</div>
+        <div class="box"><strong>Total:</strong> ${money(ventaTaquillaActual.total)}</div>
+        <div class="box"><strong>Método de pago:</strong> ${ventaTaquillaActual.metodo_pago || 'N/A'}</div>
+
+        <div class="qr">
+          <img src="${API_BASE}/qrs/${encodeURIComponent(ventaTaquillaActual.folio)}.png" alt="QR">
+        </div>
+
+        <div class="box">
+          <strong>Detalle de compra</strong>
+          <ul>${detallesHtml}</ul>
+        </div>
+      </div>
+      <script>
+        window.onload = function() { window.print(); }
+      <\/script>
+    </body>
+    </html>
+  `);
+  popup.document.close();
+}
+
+function verDetalleTaquilla() {
+  if (!ventaTaquillaActual || !ventaTaquillaActual.folio) {
+    setMessage('msgTaquilla', '❌ Primero genera una venta.', 'error');
+    return;
+  }
+
+  cambiarPanel('buscar');
+  document.getElementById('folioBuscar').value = ventaTaquillaActual.folio;
+  buscarFolio();
+}
+
+    async function cargarDashboard() {
+      clearMessage('msgDashboard');
+      try {
+        const res = await fetch(`${API_BASE}/api/estadisticas`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudieron cargar las estadísticas');
+        }
+
+        document.getElementById('cardVentasHoy').textContent = data.ventas_hoy ?? 0;
+        document.getElementById('cardIngresosHoy').textContent = money(data.ingresos_hoy);
+        document.getElementById('cardAccesosAceptados').textContent = data.visitantes_actuales ?? 0;
+        document.getElementById('cardPendientes').textContent = data.qr_pendientes_hoy ?? 0;
+        document.getElementById('cardMasVendido').textContent = data.boletos_mas_vendidos || '---';
+      } catch (error) {
+        setMessage('msgDashboard', '❌ ' + error.message, 'error');
+      }
+    }
+
+    async function cargarVentas() {
+      clearMessage('msgVentas');
+
+      const fecha = document.getElementById('fechaVentas').value;
+      const estadoAcceso = document.getElementById('estadoAccesoVentas').value;
+      const tbody = document.getElementById('tbodyVentas');
+
+      tbody.innerHTML = '<tr><td colspan="11">Cargando ventas...</td></tr>';
+
+      try {
+        const params = new URLSearchParams();
+        if (fecha) params.set('fecha', fecha);
+        if (estadoAcceso) params.set('estado_acceso', estadoAcceso);
+        params.set('limit', '100');
+
+        const res = await fetch(`${API_BASE}/api/historial-ventas?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudo cargar el historial de ventas');
+        }
+
+        if (!data.ventas.length) {
+          tbody.innerHTML = '<tr><td colspan="11">No hay ventas para los filtros seleccionados.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.ventas.map(v => `
+          <tr>
+            <td>${v.folio}</td>
+            <td>${v.nombre_cliente || 'N/A'}</td>
+            <td>${v.email || 'N/A'}</td>
+            <td>${v.fecha_visita ? String(v.fecha_visita).slice(0, 10) : 'N/A'}</td>
+            <td>${v.cantidad_personas ?? 'N/A'}</td>
+            <td>${money(v.total)}</td>
+            <td>${badgeEstado(v.estado_pago)}</td>
+            <td>${badgeEstado(v.estado_acceso)}</td>
+            <td>${v.canal_venta || 'N/A'}</td>
+            <td>${v.total_escaneos ?? 0}</td>
+            <td>
+              <button class="btn btn-secondary" onclick="verDetalleDesdeVentas('${v.folio}')">
+                Ver detalle
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="11">Error cargando ventas.</td></tr>';
+        setMessage('msgVentas', '❌ ' + error.message, 'error');
+      }
+    }
+
+    async function cargarAccesos() {
+      clearMessage('msgAccesos');
+
+      const fecha = document.getElementById('fechaAccesos').value;
+      const resultado = document.getElementById('resultadoAcceso').value;
+      const tbody = document.getElementById('tbodyAccesos');
+
+      tbody.innerHTML = '<tr><td colspan="7">Cargando accesos...</td></tr>';
+
+      try {
+        const params = new URLSearchParams();
+        if (fecha) params.set('fecha', fecha);
+        if (resultado) params.set('resultado', resultado);
+        params.set('limit', '100');
+
+        const res = await fetch(`${API_BASE}/api/historial-accesos?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudo cargar el historial de accesos');
+        }
+
+        if (!data.accesos.length) {
+          tbody.innerHTML = '<tr><td colspan="7">No hay accesos para los filtros seleccionados.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.accesos.map(a => `
+          <tr>
+            <td>${new Date(a.fecha_acceso).toLocaleString('es-MX')}</td>
+            <td>${a.folio || 'N/A'}</td>
+            <td>${a.nombre_cliente || 'N/A'}</td>
+            <td>${a.email || 'N/A'}</td>
+            <td>${badgeEstado(a.resultado)}</td>
+            <td>${a.dispositivo || 'N/A'}</td>
+            <td>${a.motivo_rechazo || '-'}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="7">Error cargando accesos.</td></tr>';
+        setMessage('msgAccesos', '❌ ' + error.message, 'error');
+      }
+    }
+
+    async function buscarFolio() {
+  clearMessage('msgBuscar');
+
+  const folio = document.getElementById('folioBuscar').value.trim();
+  const card = document.getElementById('detalleVenta');
+  const grid = document.getElementById('detalleGrid');
+  const detalleLista = document.getElementById('detalleLista');
+  const accesosLista = document.getElementById('accesosLista');
+  const btnCancelar = document.getElementById('btnCancelarVenta');
+
+  if (!folio) {
+    setMessage('msgBuscar', '❌ Escribe un folio.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ventas/${encodeURIComponent(folio)}`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Venta no encontrada');
+    }
+
+    const v = data.venta;
+    ventaActual = {
+      ...v,
+      detalles: data.detalles || [],
+      accesos: data.accesos || []
+    };
+
+    grid.innerHTML = `
+      <div><strong>Folio:</strong><br>${v.folio}</div>
+      <div><strong>Cliente:</strong><br>${v.nombre_cliente || 'N/A'}</div>
+      <div><strong>Email:</strong><br>${v.email || 'N/A'}</div>
+      <div><strong>Teléfono:</strong><br>${v.telefono || 'N/A'}</div>
+      <div><strong>Fecha visita:</strong><br>${v.fecha_visita ? String(v.fecha_visita).slice(0,10) : 'N/A'}</div>
+      <div><strong>Total:</strong><br>${money(v.total)}</div>
+      <div><strong>Pago:</strong><br>${v.estado_pago}</div>
+      <div><strong>Acceso:</strong><br>${v.estado_acceso}</div>
+      <div><strong>Método de pago:</strong><br>${v.metodo_pago || 'N/A'}</div>
+      <div><strong>Personas:</strong><br>${v.cantidad_personas ?? 'N/A'}</div>
+    `;
+
+    detalleLista.innerHTML = data.detalles.length
+      ? data.detalles.map(d => `<li>${d.nombre} x${d.cantidad} — ${money(d.subtotal)}</li>`).join('')
+      : '<li>Sin detalle</li>';
+
+    accesosLista.innerHTML = data.accesos.length
+      ? data.accesos.map(a => `
+          <li>
+            ${new Date(a.fecha_acceso).toLocaleString('es-MX')} —
+            ${a.resultado} —
+            ${a.dispositivo || 'N/A'}
+            ${a.motivo_rechazo ? ` — ${a.motivo_rechazo}` : ''}
+          </li>
+        `).join('')
+      : '<li>Sin accesos registrados</li>';
+
+    // si ya fue usada o cancelada, escondemos cancelar
+    const accesoUsado = String(v.estado_acceso || '').toLowerCase() === 'usado';
+    const cancelada = String(v.estado_pago || '').toLowerCase() === 'cancelado' ||
+                      String(v.estado_acceso || '').toLowerCase() === 'cancelado';
+
+    btnCancelar.style.display = (accesoUsado || cancelada) ? 'none' : 'inline-block';
+
+    card.style.display = 'block';
+  } catch (error) {
+    ventaActual = null;
+    card.style.display = 'none';
+    setMessage('msgBuscar', '❌ ' + error.message, 'error');
+  }
+}
+
+    async function cargarCorte() {
+      clearMessage('msgCorte');
+
+      const fecha = document.getElementById('fechaCorte').value;
+      try {
+        const params = new URLSearchParams();
+        if (fecha) params.set('fecha', fecha);
+
+        const res = await fetch(`${API_BASE}/api/corte-basico?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudo cargar el corte');
+        }
+
+        document.getElementById('corteOperaciones').textContent = data.total_operaciones ?? 0;
+        document.getElementById('corteMonto').textContent = money(data.monto_total);
+        document.getElementById('corteEfectivo').textContent = money(data.total_efectivo);
+        document.getElementById('corteTarjeta').textContent = money(data.total_tarjeta);
+        document.getElementById('corteTransferencia').textContent = money(data.total_transferencia);
+        document.getElementById('corteOnline').textContent = money(data.total_pago_en_linea);
+        document.getElementById('corteAceptados').textContent = data.accesos_aceptados ?? 0;
+        document.getElementById('corteRechazados').textContent = data.accesos_rechazados ?? 0;
+      } catch (error) {
+        setMessage('msgCorte', '❌ ' + error.message, 'error');
+      }
+    }
+
+    async function exportarVentasCSV() {
+      try {
+        const fecha = document.getElementById('fechaVentas').value;
+        const estadoAcceso = document.getElementById('estadoAccesoVentas').value;
+
+        const params = new URLSearchParams();
+        if (fecha) params.set('fecha', fecha);
+        if (estadoAcceso) params.set('estado_acceso', estadoAcceso);
+        params.set('limit', '500');
+
+        const res = await fetch(`${API_BASE}/api/historial-ventas?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudo exportar ventas');
+        }
+
+        const filas = data.ventas.map(v => ({
+          folio: v.folio,
+          cliente: v.nombre_cliente || '',
+          email: v.email || '',
+          telefono: v.telefono || '',
+          fecha_visita: v.fecha_visita ? String(v.fecha_visita).slice(0, 10) : '',
+          cantidad_personas: v.cantidad_personas ?? '',
+          total: v.total ?? '',
+          estado_pago: v.estado_pago || '',
+          estado_acceso: v.estado_acceso || '',
+          canal_venta: v.canal_venta || '',
+          escaneos: v.total_escaneos ?? 0
+        }));
+
+        descargarCSV(`ventas_${fecha || 'todas'}.csv`, filas);
+      } catch (error) {
+        setMessage('msgVentas', '❌ ' + error.message, 'error');
+      }
+    }
+
+    async function exportarAccesosCSV() {
+      try {
+        const fecha = document.getElementById('fechaAccesos').value;
+        const resultado = document.getElementById('resultadoAcceso').value;
+
+        const params = new URLSearchParams();
+        if (fecha) params.set('fecha', fecha);
+        if (resultado) params.set('resultado', resultado);
+        params.set('limit', '500');
+
+        const res = await fetch(`${API_BASE}/api/historial-accesos?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudo exportar accesos');
+        }
+
+        const filas = data.accesos.map(a => ({
+          fecha_acceso: new Date(a.fecha_acceso).toLocaleString('es-MX'),
+          folio: a.folio || '',
+          cliente: a.nombre_cliente || '',
+          email: a.email || '',
+          resultado: a.resultado || '',
+          dispositivo: a.dispositivo || '',
+          motivo_rechazo: a.motivo_rechazo || ''
+        }));
+
+        descargarCSV(`accesos_${fecha || 'todos'}.csv`, filas);
+      } catch (error) {
+        setMessage('msgAccesos', '❌ ' + error.message, 'error');
+      }
+    }
+
+    async function exportarCorteCSV() {
+      try {
+        const fecha = document.getElementById('fechaCorte').value || todayISO();
+        const params = new URLSearchParams();
+        params.set('fecha', fecha);
+
+        const res = await fetch(`${API_BASE}/api/corte-basico?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'No se pudo exportar el corte');
+        }
+
+        const filas = [{
+          fecha: data.fecha || fecha,
+          total_operaciones: data.total_operaciones ?? 0,
+          monto_total: data.monto_total ?? 0,
+          total_efectivo: data.total_efectivo ?? 0,
+          total_tarjeta: data.total_tarjeta ?? 0,
+          total_transferencia: data.total_transferencia ?? 0,
+          total_pago_en_linea: data.total_pago_en_linea ?? 0,
+          accesos_aceptados: data.accesos_aceptados ?? 0,
+          accesos_rechazados: data.accesos_rechazados ?? 0
+        }];
+
+        descargarCSV(`corte_${fecha}.csv`, filas);
+      } catch (error) {
+        setMessage('msgCorte', '❌ ' + error.message, 'error');
+      }
+    }
+
+  function limpiarBusqueda() {
+  ventaActual = null;
+  document.getElementById('folioBuscar').value = '';
+  document.getElementById('detalleVenta').style.display = 'none';
+  clearMessage('msgBuscar');
+}
+async function verificarSesionPanel() {
+  try {
+    const res = await fetch(`${API_BASE}/api/panel-me`, {
+      credentials: 'same-origin'
+    });
+
+    if (!res.ok) {
+      window.location.href = '/panel-login?next=' + encodeURIComponent('/admin.html');
+      return false;
+    }
+
+    const data = await res.json();
+if (!data.success) {
+  window.location.href = '/panel-login?next=' + encodeURIComponent('/admin.html');
+  return false;
+}
+
+mostrarUsuarioPanel(data.user?.username || 'admin');
+return true;
+    return true;
+  } catch (error) {
+    window.location.href = '/panel-login?next=' + encodeURIComponent('/admin.html');
+    return false;
+  }
+}
+
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cambiarPanel(btn.dataset.panel);
+      });
+    });
+
+    document.getElementById('btnTkHoy').addEventListener('click', () => {
+  document.getElementById('tkFecha').value = todayISO();
+});
+
+document.getElementById('btnTkLimpiar').addEventListener('click', limpiarTaquilla);
+document.getElementById('btnTkVender').addEventListener('click', venderEnTaquilla);
+document.getElementById('btnTkDescargarQR').addEventListener('click', descargarQRTaquilla);
+document.getElementById('btnTkImprimir').addEventListener('click', imprimirVentaTaquilla);
+document.getElementById('btnTkVerDetalle').addEventListener('click', verDetalleTaquilla);
+
+    document.getElementById('btnVentas').addEventListener('click', cargarVentas);
+    document.getElementById('btnVentasHoy').addEventListener('click', () => {
+      document.getElementById('fechaVentas').value = todayISO();
+      cargarVentas();
+    });
+    document.getElementById('btnExportarVentas').addEventListener('click', exportarVentasCSV);
+
+    document.getElementById('btnAccesos').addEventListener('click', cargarAccesos);
+    document.getElementById('btnAccesosHoy').addEventListener('click', () => {
+      document.getElementById('fechaAccesos').value = todayISO();
+      cargarAccesos();
+    });
+    document.getElementById('btnExportarAccesos').addEventListener('click', exportarAccesosCSV);
+
+    document.getElementById('btnBuscarFolio').addEventListener('click', buscarFolio);
+    document.getElementById('btnLimpiarBusqueda').addEventListener('click', limpiarBusqueda);
+
+    document.getElementById('btnCorte').addEventListener('click', cargarCorte);
+    document.getElementById('btnCorteHoy').addEventListener('click', () => {
+      document.getElementById('fechaCorte').value = todayISO();
+      cargarCorte();
+    });
+    document.getElementById('btnExportarCorte').addEventListener('click', exportarCorteCSV);
+
+    document.getElementById('folioBuscar').addEventListener('keydown', e => {
+      if (e.key === 'Enter') buscarFolio();
+    });
+    document.getElementById('btnDescargarQRDetalle').addEventListener('click', descargarQRDetalle);
+document.getElementById('btnReimprimirDetalle').addEventListener('click', reimprimirDetalle);
+document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVentaActual);
+
+ document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await verificarSesionPanel();
+  if (!ok) return;
+
+  const hoy = todayISO();
+  document.getElementById('fechaVentas').value = hoy;
+  document.getElementById('fechaAccesos').value = hoy;
+  document.getElementById('fechaCorte').value = hoy;
+  document.getElementById('tkFecha').value = hoy;
+
+  await cargarCategoriasTaquilla();
+  await cargarDashboard();
+  await cargarVentas();
+  await cargarAccesos();
+  await cargarCorte();
+
+  setInterval(async () => {
+    const sigueOk = await verificarSesionPanel();
+    if (!sigueOk) return;
+
+    cargarDashboard();
+
+    if (document.getElementById('panel-ventas').classList.contains('active')) {
+      cargarVentas();
+    }
+
+    if (document.getElementById('panel-accesos').classList.contains('active')) {
+      cargarAccesos();
+    }
+
+    if (document.getElementById('panel-corte').classList.contains('active')) {
+      cargarCorte();
+    }
+  }, 30000);
+});
+  </script>
+</body>
+</html>

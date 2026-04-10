@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦁 Zoológico El Sabinal - Sistema de Boletos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1b4d3d 0%, #2d6a4f 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        .zoo-header {
+            background: linear-gradient(rgba(0, 40, 20, 0.7), rgba(0, 60, 30, 0.8)),
+                        url('https://images.unsplash.com/photo-1544984243-ec57ea16fe25?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-position: center;
+            border-radius: 25px 25px 0 0;
+            padding: 35px 30px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            border-bottom: 5px solid #f9b81b;
+        }
+
+        .zoo-header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .zoo-header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .zoo-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .info-item {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 12px 25px;
+            border-radius: 60px;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-weight: 500;
+            font-size: 1.1em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .tarifas {
+            background: #fefae0;
+            padding: 25px 25px;
+            border-radius: 0 0 25px 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            margin-bottom: 20px;
+            border-top: 3px solid #bc6c25;
+        }
+
+        .tarifas h2 {
+            color: #283618;
+            margin-bottom: 15px;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 8px solid #bc6c25;
+            padding-left: 20px;
+        }
+
+        .tarjetas-precios {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .precio-card {
+            background: white;
+            padding: 15px 10px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid #d4a373;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .precio-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #bc6c25, #f9b81b);
+        }
+
+        .precio-card:hover {
+            transform: translateY(-8px);
+            border-color: #bc6c25;
+            box-shadow: 0 15px 25px rgba(76, 175, 80, 0.2);
+        }
+
+        .precio-card h3 {
+            color: #283618;
+            margin-bottom: 8px;
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        .precio {
+            font-size: 2.2em;
+            color: #bc6c25;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .precio small {
+            font-size: 0.5em;
+            color: #5f6b7a;
+            font-weight: 400;
+        }
+
+        .precio-card p {
+            color: #5f6b7a;
+            font-size: 0.85em;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .compra-form {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid #e9edc9;
+        }
+
+        .compra-form h2,
+        .consulta-box h2 {
+            color: #283618;
+            margin-bottom: 15px;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 8px solid #bc6c25;
+            padding-left: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #283618;
+            font-weight: 600;
+            font-size: 0.95em;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9edc9;
+            border-radius: 15px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .form-group input:focus,
+        .boleto-item select:focus,
+        .boleto-item input:focus {
+            outline: none;
+            border-color: #bc6c25;
+            box-shadow: 0 0 0 4px rgba(188, 108, 37, 0.1);
+            background: white;
+        }
+
+        .boletos-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 20px;
+            margin: 15px 0;
+            border: 2px dashed #d4a373;
+        }
+
+        .boletos-section h3 {
+            color: #283618;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .boletos-dinamicos {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .boleto-item {
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 0.8fr 0.4fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 15px;
+            border: 1px solid #e9edc9;
+        }
+
+        .boleto-item select,
+        .boleto-item input {
+            padding: 8px 10px;
+            border: 2px solid #e9edc9;
+            border-radius: 12px;
+            font-size: 0.95em;
+            background: white;
+        }
+
+        .subtotal {
+            font-weight: 700;
+            color: #bc6c25;
+            font-size: 1.1em;
+            text-align: right;
+        }
+
+        .btn-eliminar {
+            background: #f8d7da;
+            color: #721c24;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            margin: 0 auto;
+        }
+
+        .btn-eliminar:hover {
+            background: #f5c6cb;
+            transform: scale(1.1);
+        }
+
+        .acciones-boletos {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .btn-agregar {
+            background: #d4a373;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            border: 1px solid #bc6c25;
+        }
+
+        .btn-agregar:hover {
+            background: #bc6c25;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(188, 108, 37, 0.3);
+        }
+
+        .total {
+            text-align: right;
+            font-size: 2em;
+            margin: 15px 0;
+            padding: 15px 20px;
+            background: linear-gradient(145deg, #283618, #1f2a44);
+            border-radius: 20px;
+            color: #f9b81b;
+            font-weight: 800;
+            letter-spacing: 1px;
+            border: 2px solid #bc6c25;
+        }
+
+        .btn-comprar {
+            background: linear-gradient(145deg, #2d6a4f, #1b4d3d);
+            color: white;
+            border: none;
+            padding: 18px 30px;
+            border-radius: 60px;
+            cursor: pointer;
+            font-size: 1.3em;
+            width: 100%;
+            font-weight: 800;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            border: 2px solid #f9b81b;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+        }
+
+        .btn-comprar:hover {
+            background: linear-gradient(145deg, #1b4d3d, #0d3b2b);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            border-color: white;
+        }
+
+        .btn-comprar:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .qr-container {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+            border-radius: 30px;
+            margin-top: 20px;
+            border: 3px solid #bc6c25;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .qr-container h2 {
+            color: #283618;
+            margin-bottom: 10px;
+        }
+
+        .qr-code {
+            max-width: 250px;
+            margin: 15px auto;
+            padding: 15px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .qr-code img {
+            width: 100%;
+            display: block;
+        }
+
+        .resumen-compra {
+            max-width: 700px;
+            margin: 20px auto 0;
+            background: #fefae0;
+            border: 2px solid #d4a373;
+            border-radius: 18px;
+            padding: 20px;
+            text-align: left;
+        }
+
+        .resumen-compra p {
+            margin: 8px 0;
+            color: #283618;
+            font-weight: 500;
+        }
+
+        .resumen-compra ul {
+            margin-top: 10px;
+            padding-left: 20px;
+            color: #283618;
+        }
+
+        .btn-imprimir,
+        .btn-descargar {
+            background: #283618;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: 2px solid #f9b81b;
+            margin: 10px 5px 0;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .btn-imprimir:hover,
+        .btn-descargar:hover {
+            background: #1f2a44;
+            transform: scale(1.05);
+        }
+
+        .mensaje {
+            margin-top: 15px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .mensaje.ok {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .mensaje.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .consulta-box {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid #e9edc9;
+            margin-top: 20px;
+        }
+
+        .consulta-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: end;
+            margin-bottom: 15px;
+        }
+
+        .consulta-resultado {
+            display: none;
+            margin-top: 20px;
+            padding: 25px;
+            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+            border-radius: 25px;
+            border: 2px solid #bc6c25;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+        }
+
+        .consulta-resultado.show {
+            display: block;
+        }
+
+        .lista-boletos-email {
+            margin-top: 15px;
+            background: #f8f9fa;
+            border: 2px solid #d4a373;
+            border-radius: 20px;
+            padding: 18px;
+        }
+
+        .lista-boletos-email h3 {
+            color: #283618;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+        }
+
+        .item-boleto-email {
+            background: white;
+            border: 1px solid #e9edc9;
+            border-left: 6px solid #bc6c25;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .item-boleto-email p {
+            margin: 4px 0;
+            color: #283618;
+        }
+
+        .btn-ver-boleto {
+            background: #2d6a4f;
+            color: white;
+            border: 2px solid #f9b81b;
+            border-radius: 14px;
+            padding: 10px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-ver-boleto:hover {
+            background: #1b4d3d;
+        }
+
+        .estado-pill {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.95em;
+            margin-left: 8px;
+        }
+
+        .estado-ok {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .estado-warn {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .estado-bad {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #qr-generado, #qr-generado *,
+            #consulta-resultado, #consulta-resultado * {
+                visibility: visible;
+            }
+            #qr-generado, #consulta-resultado {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                border: none;
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .form-row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .boleto-item {
+                grid-template-columns: 1fr 1fr 1fr 0.4fr;
+                gap: 5px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .form-row,
+            .consulta-row,
+            .item-boleto-email {
+                grid-template-columns: 1fr;
+            }
+
+            .boleto-item {
+                grid-template-columns: 1fr;
+            }
+
+            .zoo-header h1 {
+                font-size: 2.2em;
+            }
+
+            .acciones-boletos {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="zoo-header">
+            <h1>🦁 ZOOLÓGICO EL SABINAL</h1>
+            <p>La Trinitaria, Chiapas — 🌿 Naturaleza y diversión para toda la familia</p>
+
+            <div class="zoo-info">
+                <div class="info-item">📍 El Sabinal, La Trinitaria</div>
+                <div class="info-item">🕐 Lun-Dom: 9:00 AM - 5:00 PM</div>
+                <div class="info-item">📞 963 123 4567</div>
+            </div>
+        </div>
+
+        <div class="tarifas">
+            <h2>🎟️ Tarifas disponibles</h2>
+            <div class="tarjetas-precios" id="tarjetas-precios"></div>
+        </div>
+
+        <div class="compra-form">
+            <h2>🎫 Comprar Boletos en Línea</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>👤 Nombre del comprador</label>
+                    <input type="text" id="nombre_cliente" placeholder="Nombre completo" required>
+                </div>
+
+                <div class="form-group">
+                    <label>📧 Correo Electrónico</label>
+                    <input type="email" id="email" placeholder="tucorreo@ejemplo.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>📱 Teléfono</label>
+                    <input type="tel" id="telefono" placeholder="9631234567" required>
+                </div>
+
+                <div class="form-group">
+                    <label>📅 Fecha de visita</label>
+                    <input type="date" id="fecha_visita" required>
+                </div>
+            </div>
+
+            <div class="boletos-section">
+                <h3>🎟️ Selecciona tus boletos</h3>
+
+                <div class="boletos-dinamicos" id="boletos-container"></div>
+
+                <div class="acciones-boletos">
+                    <button type="button" class="btn-agregar" onclick="agregarBoleto()">
+                        ➕ Agregar otro boleto
+                    </button>
+                </div>
+
+                <div class="total" id="total">Total: $0.00 MXN</div>
+            </div>
+
+            <button type="button" class="btn-comprar" id="btn-comprar" onclick="procesarCompra()">
+                💳 Comprar Boletos y Generar QR
+            </button>
+
+            <div id="mensaje" class="mensaje"></div>
+        </div>
+
+        <div class="consulta-box">
+            <h2>🔎 Consultar mi boleto</h2>
+
+            <div class="consulta-row">
+                <div class="form-group">
+                    <label>🎫 Folio de compra</label>
+                    <input type="text" id="folio_consulta" placeholder="Ej. ZB-20260406-XXXXXX">
+                </div>
+
+                <button type="button" class="btn-comprar" style="max-width:260px;" onclick="consultarBoleto()">
+                    Buscar boleto
+                </button>
+            </div>
+
+            <div class="consulta-row">
+                <div class="form-group">
+                    <label>📧 Correo electrónico</label>
+                    <input type="email" id="email_consulta" placeholder="Ej. tucorreo@gmail.com">
+                </div>
+
+                <button type="button" class="btn-comprar" style="max-width:260px;" onclick="consultarBoletosPorEmail()">
+                    Buscar por correo
+                </button>
+            </div>
+
+            <div id="mensaje-consulta" class="mensaje"></div>
+
+            <div id="lista-boletos-email" class="lista-boletos-email" style="display:none;"></div>
+
+            <div id="consulta-resultado" class="consulta-resultado">
+                <h2>📋 Resultado de la consulta</h2>
+
+                <div id="consulta-qr" class="qr-code"></div>
+
+                <div class="resumen-compra" id="consulta-resumen"></div>
+
+                <a id="consulta-descargar" class="btn-descargar" href="#" download target="_blank">
+                    ⬇️ Descargar QR
+                </a>
+
+                <button class="btn-imprimir" onclick="imprimirConsulta()">
+                    🖨️ Imprimir boleto
+                </button>
+            </div>
+        </div>
+
+        <div id="qr-generado" style="display: none;" class="qr-container">
+            <h2>✅ ¡Compra exitosa!</h2>
+            <p>Tu código QR fue generado correctamente. Preséntalo en la entrada.</p>
+
+            <div id="qr-code" class="qr-code"></div>
+
+            <div class="resumen-compra" id="resumen-compra"></div>
+
+            <a id="btn-descargar" class="btn-descargar" href="#" download target="_blank">
+                ⬇️ Descargar QR
+            </a>
+
+            <button class="btn-imprimir" onclick="imprimirSoloQR()">
+                🖨️ Imprimir comprobante
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let categorias = [];
+
+        function money(valor) {
+            return '$' + Number(valor || 0).toFixed(2) + ' MXN';
+        }
+
+        function formatearMetodoPago(valor) {
+            const mapa = {
+                pago_en_linea: 'Pago en línea',
+                efectivo: 'Efectivo',
+                tarjeta: 'Tarjeta',
+                transferencia: 'Transferencia',
+                cortesia: 'Cortesía'
+            };
+            return mapa[valor] || valor || 'N/A';
+        }
+
+        function mostrarMensaje(texto, tipo = 'ok') {
+            const mensaje = document.getElementById('mensaje');
+            mensaje.className = `mensaje ${tipo}`;
+            mensaje.textContent = texto;
+        }
+
+        function ocultarMensaje() {
+            const mensaje = document.getElementById('mensaje');
+            mensaje.className = 'mensaje';
+            mensaje.textContent = '';
+        }
+
+        function mostrarMensajeConsulta(texto, tipo = 'ok') {
+            const mensaje = document.getElementById('mensaje-consulta');
+            mensaje.className = `mensaje ${tipo}`;
+            mensaje.textContent = texto;
+        }
+
+        function ocultarMensajeConsulta() {
+            const mensaje = document.getElementById('mensaje-consulta');
+            mensaje.className = 'mensaje';
+            mensaje.textContent = '';
+        }
+
+        function getCategoriaById(id) {
+            return categorias.find(c => Number(c.id) === Number(id)) || null;
+        }
+
+        function construirOpcionesCategorias() {
+            return categorias.map(cat => `
+                <option value="${cat.id}" data-precio="${cat.precio}">
+                    ${cat.nombre} - ${money(cat.precio)}
+                </option>
+            `).join('');
+        }
+
+        function renderTarifas() {
+            const contenedor = document.getElementById('tarjetas-precios');
+
+            contenedor.innerHTML = categorias.map(cat => `
+                <div class="precio-card">
+                    <h3>${cat.nombre}</h3>
+                    <div class="precio">$${Number(cat.precio).toFixed(2)} <small>MXN</small></div>
+                    <p>${cat.descripcion || ''}${cat.requiere_credencial ? ' | Requiere credencial' : ''}</p>
+                </div>
+            `).join('');
+        }
+
+        function crearBoletoHTML() {
+            return `
+                <div class="boleto-item">
+                    <select class="categoria" onchange="calcularTotales()">
+                        ${construirOpcionesCategorias()}
+                    </select>
+                    <input type="number" class="cantidad" value="1" min="1" max="100" onchange="calcularTotales()">
+                    <span class="subtotal">$0.00</span>
+                    <button type="button" class="btn-eliminar" onclick="eliminarBoleto(this)">✕</button>
+                </div>
+            `;
+        }
+
+        function agregarBoleto() {
+            if (!categorias.length) return;
+
+            const container = document.getElementById('boletos-container');
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = crearBoletoHTML();
+            container.appendChild(wrapper.firstElementChild);
+            calcularTotales();
+        }
+
+        function eliminarBoleto(btn) {
+            const items = document.querySelectorAll('.boleto-item');
+            if (items.length <= 1) {
+                mostrarMensaje('Debes tener al menos un renglón de boletos.', 'error');
+                return;
+            }
+
+            btn.parentElement.remove();
+            calcularTotales();
+        }
+
+        function calcularTotales() {
+            let total = 0;
+
+            document.querySelectorAll('.boleto-item').forEach(item => {
+                const categoriaId = Number(item.querySelector('.categoria').value);
+                const cantidad = Number(item.querySelector('.cantidad').value) || 0;
+                const categoria = getCategoriaById(categoriaId);
+
+                const precio = categoria ? Number(categoria.precio) : 0;
+                const subtotal = precio * cantidad;
+
+                item.querySelector('.subtotal').textContent = '$' + subtotal.toFixed(2);
+                total += subtotal;
+            });
+
+            document.getElementById('total').innerHTML = `Total: $${total.toFixed(2)} MXN`;
+            return total;
+        }
+
+        function obtenerDetallesCompra() {
+            const detalles = [];
+
+            document.querySelectorAll('.boleto-item').forEach(item => {
+                const categoriaId = Number(item.querySelector('.categoria').value);
+                const cantidad = Number(item.querySelector('.cantidad').value) || 0;
+
+                if (cantidad > 0) {
+                    detalles.push({
+                        categoria_id: categoriaId,
+                        cantidad: cantidad
+                    });
+                }
+            });
+
+            return detalles;
+        }
+
+        function imprimirSoloQR() {
+            window.print();
+        }
+
+        function claseEstadoAcceso(estado) {
+            const v = String(estado || '').toLowerCase();
+            if (v === 'usado') return 'estado-pill estado-ok';
+            if (v === 'pendiente') return 'estado-pill estado-warn';
+            return 'estado-pill estado-bad';
+        }
+
+        function renderResultadoCompra(data) {
+            const qrContainer = document.getElementById('qr-code');
+            const resumen = document.getElementById('resumen-compra');
+            const qrSection = document.getElementById('qr-generado');
+            const btnDescargar = document.getElementById('btn-descargar');
+
+            qrContainer.innerHTML = `
+                <img src="${data.venta.qr_url}" alt="Código QR del boleto">
+            `;
+
+            const detalleHTML = data.detalles.map(d => `
+                <li>${d.nombre} x${d.cantidad} — ${money(d.subtotal)}</li>
+            `).join('');
+
+            resumen.innerHTML = `
+                <p><strong>Folio:</strong> ${data.venta.folio}</p>
+                <p><strong>Correo:</strong> ${data.venta.email || 'N/A'}</p>
+                <p><strong>Fecha de visita:</strong> ${data.venta.fecha_visita}</p>
+                <p><strong>Total de personas:</strong> ${data.venta.cantidad_personas}</p>
+                <p><strong>Total pagado:</strong> ${money(data.venta.total)}</p>
+                <p><strong>Correo enviado:</strong> ${data.venta.correo_enviado ? 'Sí ✅' : 'No ⚠️'}</p>
+                <p><strong>Detalle:</strong></p>
+                <ul>${detalleHTML}</ul>
+            `;
+
+            btnDescargar.href = data.venta.qr_url;
+            btnDescargar.setAttribute('download', `${data.venta.folio}.png`);
+
+            qrSection.style.display = 'block';
+            qrSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function imprimirConsulta() {
+            const resultado = document.getElementById('consulta-resultado');
+            if (!resultado.classList.contains('show')) {
+                mostrarMensajeConsulta('❌ Primero consulta un boleto.', 'error');
+                return;
+            }
+
+            const popup = window.open('', '_blank', 'width=900,height=700');
+            popup.document.write(`
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Consulta de boleto</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
+                        .wrap { max-width: 720px; margin: auto; border: 2px solid #d4a373; border-radius: 18px; padding: 24px; }
+                        h1 { margin-top: 0; color: #1b4332; }
+                        .box { background: #f8f9fa; padding: 14px; border-radius: 12px; margin: 10px 0; }
+                        .qr { text-align: center; margin: 20px 0; }
+                        .qr img { max-width: 220px; border: 1px solid #ccc; padding: 10px; border-radius: 12px; }
+                        ul { margin: 0; padding-left: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="wrap">
+                        ${document.getElementById('consulta-resultado').innerHTML}
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            popup.document.close();
+        }
+
+        async function consultarBoleto() {
+            ocultarMensajeConsulta();
+            document.getElementById('lista-boletos-email').style.display = 'none';
+
+            const folio = document.getElementById('folio_consulta').value.trim();
+            const resultado = document.getElementById('consulta-resultado');
+            const qr = document.getElementById('consulta-qr');
+            const resumen = document.getElementById('consulta-resumen');
+            const descargar = document.getElementById('consulta-descargar');
+
+            if (!folio) {
+                mostrarMensajeConsulta('❌ Escribe el folio de compra.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/ventas/${encodeURIComponent(folio)}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'No se encontró la compra');
+                }
+
+                const venta = data.venta;
+                const detallesHtml = (data.detalles || []).map(d => `
+                    <li>${d.nombre} x${d.cantidad} — ${money(d.subtotal)}</li>
+                `).join('');
+
+                qr.innerHTML = `
+                    <img src="${API_BASE}/qrs/${encodeURIComponent(venta.folio)}.png" alt="QR del boleto">
+                `;
+
+                resumen.innerHTML = `
+                    <p><strong>Folio:</strong> ${venta.folio}</p>
+                    <p><strong>Cliente:</strong> ${venta.nombre_cliente || 'N/A'}</p>
+                    <p><strong>Correo:</strong> ${venta.email || 'N/A'}</p>
+                    <p><strong>Teléfono:</strong> ${venta.telefono || 'N/A'}</p>
+                    <p><strong>Fecha de visita:</strong> ${venta.fecha_visita ? String(venta.fecha_visita).slice(0,10) : 'N/A'}</p>
+                    <p><strong>Total de personas:</strong> ${venta.cantidad_personas ?? 'N/A'}</p>
+                    <p><strong>Total pagado:</strong> ${money(venta.total)}</p>
+                    <p><strong>Método de pago:</strong> ${formatearMetodoPago(venta.metodo_pago)}</p>
+                    <p>
+                        <strong>Estado de acceso:</strong>
+                        <span class="${claseEstadoAcceso(venta.estado_acceso)}">${venta.estado_acceso || 'N/A'}</span>
+                    </p>
+                    <p><strong>Detalle:</strong></p>
+                    <ul>${detallesHtml || '<li>Sin detalle</li>'}</ul>
+                `;
+
+                descargar.href = `${API_BASE}/qrs/${encodeURIComponent(venta.folio)}.png`;
+                descargar.setAttribute('download', `${venta.folio}.png`);
+
+                resultado.classList.add('show');
+                resultado.scrollIntoView({ behavior: 'smooth' });
+
+                mostrarMensajeConsulta('✅ Boleto encontrado correctamente.', 'ok');
+            } catch (error) {
+                resultado.classList.remove('show');
+                mostrarMensajeConsulta(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        async function consultarBoletosPorEmail() {
+            ocultarMensajeConsulta();
+
+            const email = document.getElementById('email_consulta').value.trim();
+            const lista = document.getElementById('lista-boletos-email');
+            const resultado = document.getElementById('consulta-resultado');
+
+            if (!email) {
+                mostrarMensajeConsulta('❌ Escribe el correo electrónico.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/ventas-por-email?email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'No se encontraron boletos para ese correo');
+                }
+
+                if (!data.ventas || !data.ventas.length) {
+                    lista.style.display = 'none';
+                    resultado.classList.remove('show');
+                    mostrarMensajeConsulta('⚠️ No hay boletos registrados con ese correo.', 'error');
+                    return;
+                }
+
+                lista.innerHTML = `
+                    <h3>📋 Boletos encontrados (${data.total})</h3>
+                    ${data.ventas.map(v => `
+                        <div class="item-boleto-email">
+                            <div>
+                                <p><strong>Folio:</strong> ${v.folio}</p>
+                                <p><strong>Fecha visita:</strong> ${v.fecha_visita ? String(v.fecha_visita).slice(0,10) : 'N/A'}</p>
+                                <p><strong>Total:</strong> ${money(v.total)}</p>
+                                <p><strong>Estado:</strong> ${v.estado_acceso || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <button class="btn-ver-boleto" onclick="cargarBoletoDesdeLista('${v.folio}')">
+                                    Ver boleto
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+
+                lista.style.display = 'block';
+                resultado.classList.remove('show');
+                mostrarMensajeConsulta('✅ Boletos encontrados correctamente.', 'ok');
+                lista.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                lista.style.display = 'none';
+                resultado.classList.remove('show');
+                mostrarMensajeConsulta(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        function cargarBoletoDesdeLista(folio) {
+            document.getElementById('folio_consulta').value = folio;
+            consultarBoleto();
+        }
+
+        async function cargarCategorias() {
+            const response = await fetch(`${API_BASE}/api/categorias`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'No se pudieron cargar las categorías');
+            }
+
+            categorias = data.categorias || [];
+            renderTarifas();
+
+            const container = document.getElementById('boletos-container');
+            container.innerHTML = '';
+            agregarBoleto();
+        }
+
+        async function procesarCompra() {
+            ocultarMensaje();
+
+            const btnComprar = document.getElementById('btn-comprar');
+            const nombre_cliente = document.getElementById('nombre_cliente').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const telefono = document.getElementById('telefono').value.trim();
+            const fecha_visita = document.getElementById('fecha_visita').value;
+
+            if (!nombre_cliente || !email || !telefono || !fecha_visita) {
+                mostrarMensaje('Completa todos los datos del formulario.', 'error');
+                return;
+            }
+
+            const detalles = obtenerDetallesCompra();
+            if (!detalles.length) {
+                mostrarMensaje('Agrega al menos una categoría con cantidad válida.', 'error');
+                return;
+            }
+
+            btnComprar.disabled = true;
+            btnComprar.textContent = '⏳ Procesando compra...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/venta`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nombre_cliente,
+                        email,
+                        telefono,
+                        fecha_visita,
+                        detalles,
+                        metodo_pago: 'pago_en_linea',
+                        canal_venta: 'web'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'No se pudo procesar la compra');
+                }
+
+                renderResultadoCompra(data);
+                mostrarMensaje('✅ Compra realizada correctamente. Tu QR ya fue generado.', 'ok');
+
+            } catch (error) {
+                mostrarMensaje(`❌ ${error.message}`, 'error');
+            } finally {
+                btnComprar.disabled = false;
+                btnComprar.textContent = '💳 Comprar Boletos y Generar QR';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaInput = document.getElementById('fecha_visita');
+            fechaInput.min = hoy;
+            fechaInput.value = hoy;
+
+            try {
+                await cargarCategorias();
+                calcularTotales();
+            } catch (error) {
+                mostrarMensaje(`❌ ${error.message}`, 'error');
+            }
+
+            document.getElementById('folio_consulta').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    consultarBoleto();
+                }
+            });
+
+            document.getElementById('email_consulta').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    consultarBoletosPorEmail();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
