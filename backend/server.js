@@ -74,15 +74,29 @@ if (fs.existsSync(FRONTEND_DIR)) {
 //    queueLimit: 0
 //});
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+function cleanEnv(name) {
+  return String(process.env[name] || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+}
+
+const DB_CONFIG = {
+  host: cleanEnv('DB_HOST'),
+  user: cleanEnv('DB_USER'),
+  password: cleanEnv('DB_PASSWORD'),
+  database: cleanEnv('DB_NAME'),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
+};
+
+console.log('🧪 DB DEBUG:', {
+  host: DB_CONFIG.host,
+  user: DB_CONFIG.user,
+  database: DB_CONFIG.database
 });
+
+const pool = mysql.createPool(DB_CONFIG);
 
 
 // ============================================
@@ -1820,15 +1834,23 @@ app.get('/', (req, res) => {
 // 🚀 INICIAR SERVIDOR
 // ============================================
 app.listen(PORT, async () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-    console.log(`📁 Carpeta de QRs: ${QR_DIR}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`📁 Carpeta de QRs: ${QR_DIR}`);
 
-    try {
-        const conn = await pool.getConnection();
-        await conn.query('SELECT 1');
-        conn.release();
-        console.log('✅ Conectado a MySQL');
-    } catch (error) {
-        console.log('❌ Error conectando a MySQL:', error.message);
-    }
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.query('SELECT DATABASE() AS db_actual, USER() AS usuario_actual');
+    conn.release();
+
+    console.log('✅ Conectado a MySQL');
+    console.log('🧪 MySQL DEBUG:', rows[0]);
+  } catch (error) {
+    console.log('❌ Error conectando a MySQL:', {
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      message: error.message
+    });
+  }
 });
