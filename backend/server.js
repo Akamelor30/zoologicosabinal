@@ -79,7 +79,6 @@ function cleanEnv(name) {
     .trim()
     .replace(/^['"]|['"]$/g, '');
 }
-
 const DB_CONFIG = {
   host: cleanEnv('DB_HOST'),
   user: cleanEnv('DB_USER'),
@@ -87,7 +86,8 @@ const DB_CONFIG = {
   database: cleanEnv('DB_NAME'),
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  dateStrings: true
 };
 
 console.log('🧪 DB DEBUG:', {
@@ -208,11 +208,11 @@ function fechaHoyISO() {
 
 function formatearFecha(fecha) {
     try {
-        return new Intl.DateTimeFormat('es-MX', {
-            dateStyle: 'full'
-        }).format(new Date(fecha));
+        const f = String(fecha).slice(0, 10);
+        const [y, m, d] = f.split('-');
+        return `${d}/${m}/${y}`;
     } catch {
-        return fecha;
+        return String(fecha);
     }
 }
 
@@ -1155,14 +1155,8 @@ if (!codigoNormalizado) {
             ORDER BY c.id
         `, [venta.id]);
 
-        const hoy = fechaHoyISO();
-        const fechaVentaObj = new Date(venta.fecha_visita);
-const fechaVenta = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Mexico_City',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-}).format(fechaVentaObj);
+     const hoy = fechaHoyISO();
+const fechaVenta = String(venta.fecha_visita).slice(0, 10);
 
         if (venta.estado_pago !== 'pagado') {
             await registrarAcceso({
