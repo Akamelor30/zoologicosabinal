@@ -106,7 +106,7 @@ const pool = mysql.createPool(DB_CONFIG);
 // ⚠️ CAMBIA ESTAS VARIABLES EN TU SISTEMA
 // ============================================
 const SMTP_HOST = cleanEnv('SMTP_HOST') || 'smtp.gmail.com';
-const SMTP_PORT = Number(cleanEnv('SMTP_PORT') || 465);
+const SMTP_PORT = Number(cleanEnv('SMTP_PORT') || 487);
 const SMTP_USER = cleanEnv('SMTP_USER') || '';
 const SMTP_PASS = cleanEnv('SMTP_PASS') || '';
 const SMTP_FROM_NAME = cleanEnv('SMTP_FROM_NAME') || 'Zoológico El Sabinal';
@@ -119,7 +119,7 @@ if (smtpHabilitado) {
     transporter = nodemailer.createTransport({
         host: SMTP_HOST,
         port: SMTP_PORT,
-        secure: SMTP_PORT === 465,
+        secure: SMTP_PORT === 487,
         auth: {
             user: SMTP_USER,
             pass: SMTP_PASS
