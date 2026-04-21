@@ -38,10 +38,9 @@ const DB_CONFIG = {
 };
 
 
-const PANEL_USER = process.env.PANEL_USER || 'admin';
-const PANEL_PASS = process.env.PANEL_PASS || 'Sabinal2026*';
-const PANEL_SESSION_HOURS = Number(process.env.PANEL_SESSION_HOURS || 12);
-
+const PANEL_USER = cleanEnv('PANEL_USER') || 'admin';
+const PANEL_PASS = cleanEnv('PANEL_PASS') || 'Sabinal2026*';
+const PANEL_SESSION_HOURS = Number(cleanEnv('PANEL_SESSION_HOURS') || 12);
 const panelSessions = new Map();
 // ============================================
 // ⚙️ CONFIG GENERAL
@@ -106,7 +105,7 @@ const pool = mysql.createPool(DB_CONFIG);
 // ⚠️ CAMBIA ESTAS VARIABLES EN TU SISTEMA
 // ============================================
 const SMTP_HOST = cleanEnv('SMTP_HOST') || 'smtp.gmail.com';
-const SMTP_PORT = Number(cleanEnv('SMTP_PORT') || 487);
+const SMTP_PORT = Number(cleanEnv('SMTP_PORT') || 465);
 const SMTP_USER = cleanEnv('SMTP_USER') || '';
 const SMTP_PASS = cleanEnv('SMTP_PASS') || '';
 const SMTP_FROM_NAME = cleanEnv('SMTP_FROM_NAME') || 'Zoológico El Sabinal';
@@ -119,7 +118,7 @@ if (smtpHabilitado) {
     transporter = nodemailer.createTransport({
         host: SMTP_HOST,
         port: SMTP_PORT,
-        secure: SMTP_PORT === 487,
+        secure: SMTP_PORT === 465,
         auth: {
             user: SMTP_USER,
             pass: SMTP_PASS
@@ -1188,69 +1187,69 @@ console.log('🧪 QR DEBUG:', {
     fechaRaw: venta.fecha_visita
 });
 
-        if (venta.estado_pago !== 'pagado') {
-            await registrarAcceso({
-                conn,
-                ventaId: venta.id,
-                taquilleroId: taquillero_id,
-                dispositivo,
-                resultado: 'rechazado',
-                ip,
-                motivoRechazo: 'Pago no confirmado',
-                observaciones
-            });
+if (venta.estado_pago !== 'pagado') {
+    await registrarAcceso({
+        conn,
+        ventaId: venta.id,
+        taquilleroId: taquillero_id,
+        dispositivo,
+        resultado: 'rechazado',
+        ip,
+        motivoRechazo: 'Pago no confirmado',
+        observaciones
+    });
 
-            await conn.commit();
+    await conn.commit();
 
-            return res.json({
-                valido: false,
-                mensaje: '❌ Pago no confirmado',
-               datos: {
-    folio: venta.folio,
-    email: venta.email,
-    telefono: venta.telefono,
-    nombre_cliente: venta.nombre_cliente,
-    total: venta.total,
-    cantidad_personas: venta.cantidad_personas,
-    fecha_visita: venta.fecha_visita,
-    metodo_pago: venta.metodo_pago,
-    detalles
-}
-            });
+    return res.json({
+        valido: false,
+        mensaje: '❌ Pago no confirmado',
+        datos: {
+            folio: venta.folio,
+            email: venta.email,
+            telefono: venta.telefono,
+            nombre_cliente: venta.nombre_cliente,
+            total: venta.total,
+            cantidad_personas: venta.cantidad_personas,
+            fecha_visita: venta.fecha_visita,
+            metodo_pago: venta.metodo_pago,
+            detalles
         }
-
-        if (venta.estado_acceso === 'usado' || Number(venta.qr_usado) === 1) {
-            await registrarAcceso({
-                conn,
-                ventaId: venta.id,
-                taquilleroId: taquillero_id,
-                dispositivo,
-                resultado: 'rechazado',
-                ip,
-                motivoRechazo: 'QR ya utilizado',
-                observaciones
-            });
-
-            await conn.commit();
-
-            return res.json({
-                valido: false,
-                mensaje: '❌ Este QR ya fue utilizado',
-             datos: {
-    folio: venta.folio,
-    email: venta.email,
-    telefono: venta.telefono,
-    nombre_cliente: venta.nombre_cliente,
-    total: venta.total,
-    cantidad_personas: venta.cantidad_personas,
-    fecha_visita: venta.fecha_visita,
-    metodo_pago: venta.metodo_pago,
-    detalles
+    });
 }
-            });
-        }
 
-     if (fechaVenta !== hoy) {
+if (venta.estado_acceso === 'usado' || Number(venta.qr_usado) === 1) {
+    await registrarAcceso({
+        conn,
+        ventaId: venta.id,
+        taquilleroId: taquillero_id,
+        dispositivo,
+        resultado: 'rechazado',
+        ip,
+        motivoRechazo: 'QR ya utilizado',
+        observaciones
+    });
+
+    await conn.commit();
+
+    return res.json({
+        valido: false,
+        mensaje: '❌ Este QR ya fue utilizado',
+        datos: {
+            folio: venta.folio,
+            email: venta.email,
+            telefono: venta.telefono,
+            nombre_cliente: venta.nombre_cliente,
+            total: venta.total,
+            cantidad_personas: venta.cantidad_personas,
+            fecha_visita: venta.fecha_visita,
+            metodo_pago: venta.metodo_pago,
+            detalles
+        }
+    });
+}
+
+if (fechaVenta !== hoy) {
     await registrarAcceso({
         conn,
         ventaId: venta.id,
@@ -1280,13 +1279,6 @@ console.log('🧪 QR DEBUG:', {
         }
     });
 }
-        
-const ahoraCDMX = new Date();
-const horaActual = Number(new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Mexico_City',
-    hour: '2-digit',
-    hour12: false
-}).format(ahoraCDMX));
 
 if (horaActual < 9 || horaActual >= 17) {
     await registrarAcceso({
