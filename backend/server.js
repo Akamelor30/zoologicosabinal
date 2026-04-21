@@ -112,6 +112,13 @@ const SMTP_FROM_NAME = cleanEnv('SMTP_FROM_NAME') || 'Zoológico El Sabinal';
 
 const smtpHabilitado = Boolean(SMTP_USER && SMTP_PASS);
 
+console.log('🧪 SMTP DEBUG:', {
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    user: SMTP_USER,
+    hasPass: Boolean(SMTP_PASS)
+});
+
 let transporter = null;
 
 if (smtpHabilitado) {
@@ -129,7 +136,9 @@ if (smtpHabilitado) {
         connectionTimeout: 30000,
         greetingTimeout: 30000,
         socketTimeout: 30000,
-        family: 4
+        lookup: (hostname, options, callback) => {
+            dns.lookup(hostname, { family: 4, all: false }, callback);
+        }
     });
 
     transporter.verify((error) => {
