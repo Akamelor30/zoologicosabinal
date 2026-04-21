@@ -21,6 +21,22 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function cleanEnv(name) {
+  return String(process.env[name] || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+}
+const DB_CONFIG = {
+  host: cleanEnv('DB_HOST'),
+  user: cleanEnv('DB_USER'),
+  password: cleanEnv('DB_PASSWORD'),
+  database: cleanEnv('DB_NAME'),
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  dateStrings: true
+};
+
 
 const PANEL_USER = process.env.PANEL_USER || 'admin';
 const PANEL_PASS = process.env.PANEL_PASS || 'Sabinal2026*';
@@ -74,21 +90,7 @@ if (fs.existsSync(FRONTEND_DIR)) {
 //    queueLimit: 0
 //});
 
-function cleanEnv(name) {
-  return String(process.env[name] || '')
-    .trim()
-    .replace(/^['"]|['"]$/g, '');
-}
-const DB_CONFIG = {
-  host: cleanEnv('DB_HOST'),
-  user: cleanEnv('DB_USER'),
-  password: cleanEnv('DB_PASSWORD'),
-  database: cleanEnv('DB_NAME'),
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  dateStrings: true
-};
+
 
 console.log('🧪 DB DEBUG:', {
   host: DB_CONFIG.host,
@@ -103,11 +105,11 @@ const pool = mysql.createPool(DB_CONFIG);
 // 📧 CONFIGURACIÓN DE CORREO
 // ⚠️ CAMBIA ESTAS VARIABLES EN TU SISTEMA
 // ============================================
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Zoológico El Sabinal';
+const SMTP_HOST = cleanEnv('SMTP_HOST') || 'smtp.gmail.com';
+const SMTP_PORT = Number(cleanEnv('SMTP_PORT') || 465);
+const SMTP_USER = cleanEnv('SMTP_USER') || '';
+const SMTP_PASS = cleanEnv('SMTP_PASS') || '';
+const SMTP_FROM_NAME = cleanEnv('SMTP_FROM_NAME') || 'Zoológico El Sabinal';
 
 const smtpHabilitado = Boolean(SMTP_USER && SMTP_PASS);
 
@@ -117,21 +119,18 @@ if (smtpHabilitado) {
     transporter = nodemailer.createTransport({
         host: SMTP_HOST,
         port: SMTP_PORT,
-        secure: false,
+        secure: SMTP_PORT === 465,
         auth: {
             user: SMTP_USER,
             pass: SMTP_PASS
         },
         tls: {
-            rejectUnauthorized: false,
-            ciphers: 'SSLv3'
+            rejectUnauthorized: false
         },
-        connectionTimeout: 60000,
-        greetingTimeout: 60000,
-        socketTimeout: 60000,
-        lookup: (hostname, options, callback) => {
-            dns.lookup(hostname, { family: 4 }, callback);
-        }
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
+        family: 4
     });
 
     transporter.verify((error) => {
@@ -204,6 +203,25 @@ function fechaHoyISO() {
     const d = partes.find(p => p.type === 'day').value;
 
     return `${y}-${m}-${d}`;
+}
+function fechaHoraZoo() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Mexico_City',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).formatToParts(new Date());
+
+    const get = (tipo) => partes.find(p => p.type === tipo)?.value;
+
+    return {
+        fecha: `${get('year')}-${get('month')}-${get('day')}`,
+        hora: Number(get('hour')),
+        minuto: Number(get('minute'))
+    };
 }
 
 function formatearFecha(fecha) {
@@ -1155,8 +1173,20 @@ if (!codigoNormalizado) {
             ORDER BY c.id
         `, [venta.id]);
 
-     const hoy = fechaHoyISO();
+   const ahoraZoo = fechaHoraZoo();
+const hoy = ahoraZoo.fecha;
+const horaActual = ahoraZoo.hora;
+const minutoActual = ahoraZoo.minuto;
 const fechaVenta = String(venta.fecha_visita).slice(0, 10);
+
+console.log('🧪 QR DEBUG:', {
+    codigo: codigoNormalizado,
+    fechaVenta,
+    hoy,
+    horaActual,
+    minutoActual,
+    fechaRaw: venta.fecha_visita
+});
 
         if (venta.estado_pago !== 'pagado') {
             await registrarAcceso({
@@ -1220,36 +1250,36 @@ const fechaVenta = String(venta.fecha_visita).slice(0, 10);
             });
         }
 
-        if (fechaVenta !== hoy) {
-            await registrarAcceso({
-                conn,
-                ventaId: venta.id,
-                taquilleroId: taquillero_id,
-                dispositivo,
-                resultado: 'rechazado',
-                ip,
-                motivoRechazo: 'Fecha de visita no válida',
-                observaciones
-            });
+     if (fechaVenta !== hoy) {
+    await registrarAcceso({
+        conn,
+        ventaId: venta.id,
+        taquilleroId: taquillero_id,
+        dispositivo,
+        resultado: 'rechazado',
+        ip,
+        motivoRechazo: 'Fecha de visita no válida',
+        observaciones
+    });
 
-            await conn.commit();
+    await conn.commit();
 
-            return res.json({
-                valido: false,
-                mensaje: `❌ Este QR corresponde a la fecha ${fechaVenta}, no a hoy`,
-             datos: {
-    folio: venta.folio,
-    email: venta.email,
-    telefono: venta.telefono,
-    nombre_cliente: venta.nombre_cliente,
-    total: venta.total,
-    cantidad_personas: venta.cantidad_personas,
-    fecha_visita: venta.fecha_visita,
-    metodo_pago: venta.metodo_pago,
-    detalles
-}
-            });
+    return res.json({
+        valido: false,
+        mensaje: `❌ Este QR corresponde a la fecha ${fechaVenta}. Hoy en el zoológico es ${hoy}.`,
+        datos: {
+            folio: venta.folio,
+            email: venta.email,
+            telefono: venta.telefono,
+            nombre_cliente: venta.nombre_cliente,
+            total: venta.total,
+            cantidad_personas: venta.cantidad_personas,
+            fecha_visita: venta.fecha_visita,
+            metodo_pago: venta.metodo_pago,
+            detalles
         }
+    });
+}
         
 const ahoraCDMX = new Date();
 const horaActual = Number(new Intl.DateTimeFormat('en-US', {
@@ -1274,18 +1304,18 @@ if (horaActual < 9 || horaActual >= 17) {
 
     return res.json({
         valido: false,
-        mensaje: '❌ Fuera del horario del zoológico (9:00 AM a 5:00 PM)',
-     datos: {
-    folio: venta.folio,
-    email: venta.email,
-    telefono: venta.telefono,
-    nombre_cliente: venta.nombre_cliente,
-    total: venta.total,
-    cantidad_personas: venta.cantidad_personas,
-    fecha_visita: venta.fecha_visita,
-    metodo_pago: venta.metodo_pago,
-    detalles
-}
+        mensaje: `❌ Hoy sí es ${hoy}, pero estás fuera del horario del zoológico (9:00 AM a 5:00 PM). Hora actual: ${String(horaActual).padStart(2, '0')}:${String(minutoActual).padStart(2, '0')}`,
+        datos: {
+            folio: venta.folio,
+            email: venta.email,
+            telefono: venta.telefono,
+            nombre_cliente: venta.nombre_cliente,
+            total: venta.total,
+            cantidad_personas: venta.cantidad_personas,
+            fecha_visita: venta.fecha_visita,
+            metodo_pago: venta.metodo_pago,
+            detalles
+        }
     });
 }
         await registrarAcceso({
