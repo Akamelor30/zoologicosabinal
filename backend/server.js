@@ -861,6 +861,49 @@ app.use('/api/test-email', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
 app.use(/^\/api\/ventas\/[^/]+\/confirmar-pago$/, requirePanelAuth);
+
+// ============================================
+// 🖼️ QR DINÁMICO POR FOLIO
+// Si el PNG no existe, se vuelve a generar
+// ============================================
+app.get('/qrs/:archivo', async (req, res) => {
+    try {
+        const archivo = String(req.params.archivo || '');
+
+        if (!archivo.toLowerCase().endsWith('.png')) {
+            return res.status(400).send('Archivo no válido');
+        }
+
+        const folioRaw = archivo.replace(/\.png$/i, '');
+        const folio = normalizarCodigoQR(folioRaw);
+
+        if (!folio || !folio.startsWith('ZB-')) {
+            return res.status(400).send('Folio no válido');
+        }
+
+        const [rows] = await pool.query(`
+            SELECT id, folio
+            FROM ventas
+            WHERE folio = ?
+            LIMIT 1
+        `, [folio]);
+
+        if (!rows.length) {
+            return res.status(404).send('QR no encontrado');
+        }
+
+        const qrPath = path.join(QR_DIR, `${folio}.png`);
+
+        if (!fs.existsSync(qrPath)) {
+            await generarYGuardarQR(folio);
+        }
+
+        return res.sendFile(qrPath);
+    } catch (error) {
+        console.log('❌ Error generando/mostrando QR:', error.message);
+        return res.status(500).send('Error generando QR');
+    }
+});
 // ============================================
 // 🚑 HEALTHCHECK
 // ============================================

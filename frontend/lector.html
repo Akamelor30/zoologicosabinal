@@ -350,6 +350,43 @@
     margin-right: 6px;
     vertical-align: middle;
 }
+.acciones-pago {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 18px;
+    background: #fff3cd;
+    border: 3px solid #ffc107;
+    display: none;
+}
+
+.acciones-pago h3 {
+    margin: 0 0 10px;
+    color: #856404;
+}
+
+.acciones-pago p {
+    margin: 6px 0;
+    color: #283618;
+    font-weight: 600;
+}
+
+.pago-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.btn-pago-ok {
+    background: linear-gradient(145deg, #2d6a4f, #1b4d3d);
+    color: white;
+}
+
+.btn-pago-cancelar {
+    background: #b02a37;
+    color: white;
+    border-color: #f5c2c7;
+}
 
         @media (max-width: 700px) {
             .controles-top,
@@ -417,6 +454,20 @@
 <div id="debugCodigo" style="margin-top:10px; padding:12px; border-radius:10px; background:#f8f9fa; border:1px solid #ccc; font-family:monospace; font-size:0.95em;">
     Código leído: ---
 </div>
+<div id="accionesPago" class="acciones-pago">
+    <h3>💵 Reservación pendiente de pago</h3>
+    <p id="accionesPagoTexto">El cliente debe pagar en taquilla.</p>
+
+    <div class="pago-actions">
+        <button class="btn btn-pago-ok" type="button" onclick="confirmarPagoDesdeLector()">
+            ✅ Confirmar pago y permitir acceso
+        </button>
+
+        <button class="btn btn-pago-cancelar" type="button" onclick="cancelarPagoDesdeLector()">
+            ❌ No pagó / cancelar intento
+        </button>
+    </div>
+</div>
 
         <div id="info-boleto" class="info-boleto">
             <h3>📋 Detalles del acceso</h3>
@@ -456,9 +507,10 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
         const API_BASE = '';
-        let html5QrCode = null;
-        let camaraActiva = false;
-        let procesandoEscaneo = false;
+      let html5QrCode = null;
+let camaraActiva = false;
+let procesandoEscaneo = false;
+let reservaPendientePago = null;
 
         function mostrarUsuarioLector(username) {
     const box = document.getElementById('lectorUsername');
@@ -548,6 +600,7 @@ return true;
             document.getElementById('info-boleto').style.display = 'none';
             document.getElementById('codigoManual').value = '';
             document.getElementById('sincronizacion').textContent = '---';
+            ocultarAccionesPago();
             document.getElementById('codigoManual').focus();
         }
 
@@ -583,6 +636,86 @@ return true;
 
             document.getElementById('info-boleto').style.display = 'block';
         }
+        function mostrarAccionesPago(datos) {
+    reservaPendientePago = datos || null;
+
+    const box = document.getElementById('accionesPago');
+    const texto = document.getElementById('accionesPagoTexto');
+
+    if (!reservaPendientePago || !reservaPendientePago.folio) {
+        box.style.display = 'none';
+        return;
+    }
+
+    texto.innerHTML = `
+        <strong>Folio:</strong> ${reservaPendientePago.folio}<br>
+        <strong>Cliente:</strong> ${reservaPendientePago.nombre_cliente || 'N/A'}<br>
+        <strong>Total a cobrar:</strong> ${money(reservaPendientePago.total)}<br>
+        <strong>Personas:</strong> ${reservaPendientePago.cantidad_personas || 0}
+    `;
+
+    box.style.display = 'block';
+}
+
+function ocultarAccionesPago() {
+    reservaPendientePago = null;
+    document.getElementById('accionesPago').style.display = 'none';
+}
+
+async function confirmarPagoDesdeLector() {
+    if (!reservaPendientePago || !reservaPendientePago.folio) {
+        setResultado('❌ No hay reservación pendiente para confirmar.', 'rechazado');
+        return;
+    }
+
+    const folio = reservaPendientePago.folio;
+
+    const confirmado = confirm(
+        `¿Confirmar pago de ${money(reservaPendientePago.total)} para el folio ${folio}?`
+    );
+
+    if (!confirmado) return;
+
+    try {
+        setResultado('⏳ Confirmando pago...', 'cargando');
+
+        const res = await fetch(`${API_BASE}/api/ventas/${encodeURIComponent(folio)}/confirmar-pago`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                metodo_pago: 'efectivo',
+                referencia_pago: 'Pago confirmado desde lector QR'
+            })
+        });
+
+        if (res.status === 401) {
+            window.location.href = '/panel-login?next=' + encodeURIComponent('/lector.html');
+            return;
+        }
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'No se pudo confirmar el pago');
+        }
+
+        ocultarAccionesPago();
+
+        setResultado('✅ Pago confirmado. Validando acceso...', 'cargando');
+
+        await procesarQR(folio);
+
+    } catch (error) {
+        setResultado('❌ ' + error.message, 'rechazado');
+    }
+}
+
+function cancelarPagoDesdeLector() {
+    ocultarAccionesPago();
+    setResultado('⚠️ Pago no confirmado. Puedes volver a escanear el QR cuando el cliente pague.', 'rechazado');
+    document.getElementById('codigoManual').value = '';
+    document.getElementById('codigoManual').focus();
+}
 
         async function iniciarCamara() {
             try {
@@ -670,18 +803,28 @@ if (response.status === 401) {
 const data = await response.json();
                 console.log('Respuesta del servidor:', data);
 
-                if (data.valido) {
-                    setResultado('✅ ¡ACCESO PERMITIDO!<br>Bienvenido al Zoológico', 'aceptado');
-                    mostrarInfo(data, true);
-                } else {
-                    setResultado(`❌ ${data.mensaje || 'ACCESO DENEGADO'}`, 'rechazado');
+               if (data.valido) {
+    ocultarAccionesPago();
+    setResultado('✅ ¡ACCESO PERMITIDO!<br>Bienvenido al Zoológico', 'aceptado');
+    mostrarInfo(data, true);
+} else {
+    setResultado(`${data.mensaje || '❌ ACCESO DENEGADO'}`, 'rechazado');
 
-                    if (data.datos) {
-                        mostrarInfo(data, false);
-                    } else {
-                        document.getElementById('info-boleto').style.display = 'none';
-                    }
-                }
+    if (data.datos) {
+        mostrarInfo(data, false);
+
+        const mensaje = String(data.mensaje || '').toLowerCase();
+
+        if (mensaje.includes('pago no confirmado')) {
+            mostrarAccionesPago(data.datos);
+        } else {
+            ocultarAccionesPago();
+        }
+    } else {
+        ocultarAccionesPago();
+        document.getElementById('info-boleto').style.display = 'none';
+    }
+}
 
                 document.getElementById('sincronizacion').textContent = fechaHoraActual();
                 document.getElementById('codigoManual').value = '';
