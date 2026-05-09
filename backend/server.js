@@ -856,6 +856,7 @@ app.use('/api/historial-ventas', requirePanelAuth);
 app.use('/api/historial-accesos', requirePanelAuth);
 app.use('/api/corte-basico', requirePanelAuth);
 app.use('/api/estadisticas', requirePanelAuth);
+app.use('/api/bi-dashboard', requirePanelAuth);
 app.use('/api/test-email', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
@@ -2035,31 +2036,34 @@ app.get('/api/historial-accesos', async (req, res) => {
 // ============================================
 app.get('/api/estadisticas', async (req, res) => {
     try {
+        const fecha = fechaHoyISO();
+
         const [ventasHoyRows] = await pool.query(`
             SELECT 
                 COUNT(*) AS ventas_hoy,
-                COALESCE(SUM(total), 0) AS ingresos_hoy
+                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_hoy
             FROM ventas
-            WHERE DATE(fecha_venta) = CURDATE()
-              AND estado_pago = 'pagado'
-        `);
+            WHERE DATE(fecha_venta) = ?
+              AND estado_pago <> 'cancelado'
+        `, [fecha]);
 
         const [accesosHoyRows] = await pool.query(`
             SELECT 
                 COUNT(*) AS accesos_aceptados_hoy
             FROM accesos
-            WHERE DATE(fecha_acceso) = CURDATE()
+            WHERE DATE(fecha_acceso) = ?
               AND resultado = 'aceptado'
-        `);
+        `, [fecha]);
 
         const [pendientesRows] = await pool.query(`
             SELECT 
                 COUNT(*) AS pendientes_hoy
             FROM ventas
-            WHERE fecha_visita = CURDATE()
-              AND estado_pago = 'pagado'
+            WHERE fecha_visita = ?
+              AND estado_acceso = 'pendiente'
+              AND estado_pago <> 'cancelado'
               AND qr_usado = 0
-        `);
+        `, [fecha]);
 
         const [masVendidaRows] = await pool.query(`
             SELECT 
@@ -2068,11 +2072,12 @@ app.get('/api/estadisticas', async (req, res) => {
             FROM detalle_venta dv
             INNER JOIN ventas v ON v.id = dv.venta_id
             INNER JOIN categorias c ON c.id = dv.categoria_id
-            WHERE DATE(v.fecha_venta) = CURDATE()
+            WHERE DATE(v.fecha_venta) = ?
+              AND v.estado_pago <> 'cancelado'
             GROUP BY c.id, c.nombre
             ORDER BY total_vendidos DESC
             LIMIT 1
-        `);
+        `, [fecha]);
 
         res.json({
             success: true,

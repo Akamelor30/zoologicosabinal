@@ -1215,15 +1215,20 @@ function mostrarUsuarioPanel(username) {
     box.textContent = username || 'Usuario desconocido';
   }
 }
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
 
-    function todayISO() {
-      return new Date().toISOString().split('T')[0];
-    }
+function money(value) {
+  return '$' + Number(value || 0).toFixed(2);
+}
 
-   function destruirChart(chart) {
+function destruirChart(chart) {
   if (chart) {
     chart.destroy();
   }
+
+  return null;
 }
 
 function crearGrafica(ctxId, tipo, labels, data, label, extraOptions = {}) {
