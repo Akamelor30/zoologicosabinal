@@ -859,7 +859,7 @@ app.use('/api/estadisticas', requirePanelAuth);
 app.use('/api/test-email', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
-
+app.use(/^\/api\/ventas\/[^/]+\/confirmar-pago$/, requirePanelAuth);
 // ============================================
 // 🚑 HEALTHCHECK
 // ============================================
@@ -966,12 +966,17 @@ app.post('/api/venta', async (req, res) => {
         const folio = generarFolio();
         const qrToken = generarQrToken();
 
-        const metodoPagoFinal = ['efectivo', 'tarjeta', 'transferencia', 'pago_en_linea', 'cortesia']
-            .includes(metodo_pago)
+       const metodoPagoFinal = canalVentaFinal === 'web'
+    ? 'efectivo'
+    : (
+        ['efectivo', 'tarjeta', 'transferencia', 'pago_en_linea', 'cortesia'].includes(metodo_pago)
             ? metodo_pago
-            : (canalVentaFinal === 'taquilla' ? 'efectivo' : 'pago_en_linea');
+            : 'efectivo'
+      );
 
-        const estadoPagoFinal = 'pagado';
+const estadoPagoFinal = canalVentaFinal === 'web'
+    ? 'pendiente'
+    : 'pagado';
         const ipCompra = obtenerIP(req);
 
         await conn.beginTransaction();
@@ -1093,9 +1098,9 @@ app.post('/api/venta', async (req, res) => {
 
         res.json({
             success: true,
-            message: canalVentaFinal === 'taquilla'
-                ? '✅ Venta de taquilla registrada correctamente'
-                : '✅ Venta registrada correctamente',
+          message: canalVentaFinal === 'taquilla'
+    ? '✅ Venta de taquilla registrada correctamente'
+    : '✅ Reservación registrada correctamente. Presenta tu QR y paga en taquilla.',
             venta: {
                 id: ventaId,
                 folio,
@@ -1523,6 +1528,100 @@ app.post('/api/ventas/:folio/cancelar', async (req, res) => {
 });
 
 // ============================================
+// 💵 CONFIRMAR PAGO DE RESERVACIÓN
+// ============================================
+app.post('/api/ventas/:folio/confirmar-pago', async (req, res) => {
+    const conn = await pool.getConnection();
+
+    try {
+        const folio = req.params.folio;
+        const metodo_pago = String(req.body?.metodo_pago || 'efectivo').trim();
+        const referencia_pago = String(req.body?.referencia_pago || '').trim() || null;
+
+        const metodosPermitidos = ['efectivo', 'tarjeta', 'transferencia', 'pago_en_linea', 'cortesia'];
+
+        if (!metodosPermitidos.includes(metodo_pago)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Método de pago no válido'
+            });
+        }
+
+        await conn.beginTransaction();
+
+        const [rows] = await conn.query(`
+            SELECT *
+            FROM ventas
+            WHERE folio = ?
+            LIMIT 1
+        `, [folio]);
+
+        if (!rows.length) {
+            await conn.rollback();
+            return res.status(404).json({
+                success: false,
+                message: 'Reservación no encontrada'
+            });
+        }
+
+        const venta = rows[0];
+
+        if (venta.estado_pago === 'cancelado') {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'No se puede cobrar una reservación cancelada'
+            });
+        }
+
+        if (venta.estado_acceso === 'usado' || Number(venta.qr_usado) === 1) {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'Esta reservación ya fue utilizada'
+            });
+        }
+
+        if (venta.estado_pago === 'pagado') {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'Esta reservación ya está pagada'
+            });
+        }
+
+        await conn.query(`
+            UPDATE ventas
+            SET estado_pago = 'pagado',
+                metodo_pago = ?,
+                referencia_pago = ?,
+                observaciones = CONCAT(
+                    IFNULL(observaciones, ''),
+                    CASE WHEN IFNULL(observaciones, '') = '' THEN '' ELSE ' | ' END,
+                    'Pago confirmado en taquilla'
+                )
+            WHERE id = ?
+        `, [metodo_pago, referencia_pago, venta.id]);
+
+        await conn.commit();
+
+        res.json({
+            success: true,
+            message: '✅ Pago confirmado correctamente'
+        });
+    } catch (error) {
+        try { await conn.rollback(); } catch {}
+        res.status(500).json({
+            success: false,
+            message: 'Error confirmando pago',
+            error: error.message
+        });
+    } finally {
+        conn.release();
+    }
+});
+
+// ============================================
 // 📚 HISTORIAL DE VENTAS
 // Filtros opcionales:
 // ?fecha=2026-03-31
@@ -1679,6 +1778,183 @@ app.get('/api/corte-basico', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error obteniendo corte básico',
+            error: error.message
+        });
+    }
+});
+
+// ============================================
+// 📈 BI Y GRAFICACIÓN DEL PANEL ADMIN
+// ============================================
+app.get('/api/bi-dashboard', async (req, res) => {
+    try {
+        const fecha = req.query.fecha || fechaHoyISO();
+        const dias = Number(req.query.dias || 30);
+
+        const diasSemana = {
+            1: 'Domingo',
+            2: 'Lunes',
+            3: 'Martes',
+            4: 'Miércoles',
+            5: 'Jueves',
+            6: 'Viernes',
+            7: 'Sábado'
+        };
+
+        // Resumen del día seleccionado
+        const [resumenRows] = await pool.query(`
+            SELECT
+                COUNT(*) AS total_operaciones,
+                COALESCE(SUM(CASE WHEN canal_venta = 'web' THEN 1 ELSE 0 END), 0) AS reservaciones_web,
+                COALESCE(SUM(CASE WHEN canal_venta = 'taquilla' THEN 1 ELSE 0 END), 0) AS ventas_taquilla,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pendiente' THEN 1 ELSE 0 END), 0) AS pendientes_pago,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN 1 ELSE 0 END), 0) AS pagadas,
+                COALESCE(SUM(total), 0) AS ingresos_estimados,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_cobrados
+            FROM ventas
+            WHERE fecha_visita = ?
+              AND estado_pago <> 'cancelado'
+        `, [fecha]);
+
+        // Categorías más reservadas/vendidas del día
+        const [categoriasRows] = await pool.query(`
+            SELECT 
+                c.nombre,
+                COALESCE(SUM(dv.cantidad), 0) AS cantidad,
+                COALESCE(SUM(dv.subtotal), 0) AS total
+            FROM detalle_venta dv
+            INNER JOIN ventas v ON v.id = dv.venta_id
+            INNER JOIN categorias c ON c.id = dv.categoria_id
+            WHERE v.fecha_visita = ?
+              AND v.estado_pago <> 'cancelado'
+            GROUP BY c.id, c.nombre
+            ORDER BY cantidad DESC
+        `, [fecha]);
+
+        // Estados de pago del día
+        const [estadosRows] = await pool.query(`
+            SELECT
+                estado_pago,
+                COUNT(*) AS total
+            FROM ventas
+            WHERE fecha_visita = ?
+            GROUP BY estado_pago
+        `, [fecha]);
+
+        // Comparación web vs taquilla del día
+        const [canalesRows] = await pool.query(`
+            SELECT
+                canal_venta,
+                COUNT(*) AS total
+            FROM ventas
+            WHERE fecha_visita = ?
+              AND estado_pago <> 'cancelado'
+            GROUP BY canal_venta
+        `, [fecha]);
+
+        // Tendencia por fecha de visita en los últimos N días
+        const [tendenciaRows] = await pool.query(`
+            SELECT
+                fecha_visita,
+                COUNT(*) AS operaciones,
+                COALESCE(SUM(cantidad_personas), 0) AS personas,
+                COALESCE(SUM(total), 0) AS ingresos_estimados,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_cobrados
+            FROM ventas
+            WHERE fecha_visita >= DATE_SUB(?, INTERVAL ? DAY)
+              AND fecha_visita <= ?
+              AND estado_pago <> 'cancelado'
+            GROUP BY fecha_visita
+            ORDER BY fecha_visita ASC
+        `, [fecha, dias, fecha]);
+
+        // Días de la semana con mayor demanda
+        const [diasRows] = await pool.query(`
+            SELECT
+                DAYOFWEEK(fecha_visita) AS dia_numero,
+                COUNT(*) AS operaciones,
+                COALESCE(SUM(cantidad_personas), 0) AS personas,
+                COALESCE(SUM(total), 0) AS ingresos_estimados
+            FROM ventas
+            WHERE fecha_visita >= DATE_SUB(?, INTERVAL ? DAY)
+              AND fecha_visita <= ?
+              AND estado_pago <> 'cancelado'
+            GROUP BY DAYOFWEEK(fecha_visita)
+            ORDER BY personas DESC
+        `, [fecha, dias, fecha]);
+
+        const diasProcesados = diasRows.map(d => ({
+            dia_numero: Number(d.dia_numero),
+            dia_nombre: diasSemana[Number(d.dia_numero)] || 'Sin dato',
+            operaciones: Number(d.operaciones || 0),
+            personas: Number(d.personas || 0),
+            ingresos_estimados: Number(d.ingresos_estimados || 0)
+        }));
+
+        const resumen = resumenRows[0] || {};
+        const categoriaTop = categoriasRows.length ? categoriasRows[0].nombre : 'Sin datos';
+        const diaTop = diasProcesados.length ? diasProcesados[0].dia_nombre : 'Sin datos';
+
+        const pendientes = Number(resumen.pendientes_pago || 0);
+        const pagadas = Number(resumen.pagadas || 0);
+        const totalOps = Number(resumen.total_operaciones || 0);
+        const conversionPago = totalOps > 0
+            ? Number(((pagadas / totalOps) * 100).toFixed(1))
+            : 0;
+
+        res.json({
+            success: true,
+            fecha,
+            rango_dias: dias,
+            resumen: {
+                total_operaciones: Number(resumen.total_operaciones || 0),
+                reservaciones_web: Number(resumen.reservaciones_web || 0),
+                ventas_taquilla: Number(resumen.ventas_taquilla || 0),
+                pendientes_pago: pendientes,
+                pagadas,
+                ingresos_estimados: Number(resumen.ingresos_estimados || 0),
+                ingresos_cobrados: Number(resumen.ingresos_cobrados || 0),
+                conversion_pago: conversionPago
+            },
+            categorias: categoriasRows.map(c => ({
+                nombre: c.nombre,
+                cantidad: Number(c.cantidad || 0),
+                total: Number(c.total || 0)
+            })),
+            estados: estadosRows.map(e => ({
+                estado_pago: e.estado_pago,
+                total: Number(e.total || 0)
+            })),
+            canales: canalesRows.map(c => ({
+                canal_venta: c.canal_venta,
+                total: Number(c.total || 0)
+            })),
+            tendencia_dias: tendenciaRows.map(t => ({
+                fecha_visita: String(t.fecha_visita).slice(0, 10),
+                operaciones: Number(t.operaciones || 0),
+                personas: Number(t.personas || 0),
+                ingresos_estimados: Number(t.ingresos_estimados || 0),
+                ingresos_cobrados: Number(t.ingresos_cobrados || 0)
+            })),
+            dias_semana: diasProcesados,
+            insights: {
+                categoria_top: categoriaTop,
+                dia_top: diaTop,
+                mensaje_categoria: categoriaTop !== 'Sin datos'
+                    ? `La categoría con mayor demanda es ${categoriaTop}.`
+                    : 'Aún no hay suficientes datos por categoría.',
+                mensaje_dia: diaTop !== 'Sin datos'
+                    ? `El día con mayor demanda es ${diaTop}.`
+                    : 'Aún no hay suficientes datos por día.',
+                mensaje_pago: pendientes > 0
+                    ? `Hay ${pendientes} reservación(es) pendiente(s) de pago. Conviene dar seguimiento en taquilla.`
+                    : 'No hay reservaciones pendientes de pago para esta fecha.'
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo BI',
             error: error.message
         });
     }

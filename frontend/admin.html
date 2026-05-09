@@ -614,6 +614,88 @@
   margin-right: 6px;
   vertical-align: middle;
 }
+/* ===== BI Y GRAFICACIÓN ===== */
+
+.bi-header {
+  background: linear-gradient(145deg, #fefae0, #ffffff);
+  border: 2px solid #d4a373;
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 12px;
+  color: #283618;
+}
+
+.bi-header strong {
+  color: #bc6c25;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.chart-card {
+  background: #f8f9fa;
+  border: 2px solid #d4a373;
+  border-radius: 18px;
+  padding: 18px;
+  min-height: 340px;
+}
+
+.chart-card.large {
+  grid-column: 1 / -1;
+}
+
+.chart-card h4 {
+  margin-top: 0;
+  color: #283618;
+  font-size: 1rem;
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  max-height: 280px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.insight-card {
+  background: #fff;
+  border: 2px solid #e9edc9;
+  border-left: 8px solid #bc6c25;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.insight-card h4 {
+  margin: 0 0 8px;
+  color: #283618;
+}
+
+.insight-card p {
+  margin: 0;
+  color: #5f6b7a;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .chart-grid,
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card.large {
+    grid-column: auto;
+  }
+}
 
     @media (max-width: 1200px) {
       .cards { grid-template-columns: repeat(2, 1fr); }
@@ -658,6 +740,7 @@
         <button class="menu-btn" data-panel="accesos">🚪 Historial de accesos</button>
         <button class="menu-btn" data-panel="buscar">🔎 Buscar por folio</button>
         <button class="menu-btn" data-panel="corte">💰 Corte básico</button>
+        <button class="menu-btn" data-panel="bi">📈 BI y gráficas</button>
        <a href="/lector.html">📷 Ir al lector QR</a>
 <a href="/">🛒 Ir a la venta pública</a>
 <a href="/panel-logout" class="logout-link">🚪 Cerrar sesión</a>
@@ -689,14 +772,14 @@
         <h3>📊 Dashboard general</h3>
         <div class="cards">
           <div class="card">
-            <h4>Ventas hoy</h4>
+            <h4>Operaciones hoy</h4>
             <div class="value" id="cardVentasHoy">0</div>
-            <small>Operaciones registradas</small>
+           <small>Reservaciones y ventas registradas</small>
           </div>
           <div class="card">
-            <h4>Ingresos hoy</h4>
+           <h4>Ingresos cobrados hoy</h4>
             <div class="value" id="cardIngresosHoy">$0</div>
-            <small>Total vendido</small>
+           <small>Pagos confirmados en taquilla</small>
           </div>
           <div class="card">
             <h4>Accesos aceptados</h4>
@@ -706,7 +789,7 @@
           <div class="card">
             <h4>QR pendientes hoy</h4>
             <div class="value" id="cardPendientes">0</div>
-            <small>Compras sin usar</small>
+           <small>Reservaciones sin ingresar</small>
           </div>
           <div class="card">
             <h4>Más vendido</h4>
@@ -986,14 +1069,146 @@
 
         <div id="msgCorte" class="message"></div>
       </section>
-    </main>
+      <section class="panel" id="panel-bi">
+  <h3>📈 Inteligencia de negocios y graficación</h3>
+
+  <div class="bi-header">
+    <strong>Objetivo:</strong>
+    analizar reservaciones en línea, ventas en taquilla, categorías más solicitadas, días con mayor demanda e ingresos estimados/cobrados para apoyar la toma de decisiones del zoológico.
   </div>
 
+  <div class="filters">
+    <div class="field">
+      <label for="fechaBI">Fecha de análisis</label>
+      <input type="date" id="fechaBI">
+    </div>
+
+    <div class="field">
+      <label for="rangoBI">Rango histórico</label>
+      <select id="rangoBI">
+        <option value="7">Últimos 7 días</option>
+        <option value="15">Últimos 15 días</option>
+        <option value="30" selected>Últimos 30 días</option>
+        <option value="60">Últimos 60 días</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary" id="btnBI">Actualizar BI</button>
+    <button class="btn btn-secondary" id="btnBIHoy">Hoy</button>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h4>Reservaciones web</h4>
+      <div class="value" id="biReservacionesWeb">0</div>
+      <small>Generadas desde la página pública</small>
+    </div>
+
+    <div class="card">
+      <h4>Ventas en taquilla</h4>
+      <div class="value" id="biVentasTaquilla">0</div>
+      <small>Registradas desde el panel</small>
+    </div>
+
+    <div class="card">
+      <h4>Pendientes de pago</h4>
+      <div class="value" id="biPendientesPago">0</div>
+      <small>Reservaciones por cobrar</small>
+    </div>
+
+    <div class="card">
+      <h4>Ingresos estimados</h4>
+      <div class="value" id="biIngresosEstimados">$0</div>
+      <small>Total esperado por boletos</small>
+    </div>
+
+    <div class="card">
+      <h4>Ingresos cobrados</h4>
+      <div class="value" id="biIngresosCobrados">$0</div>
+      <small>Pagos confirmados</small>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h4>Categoría líder</h4>
+      <div class="value" id="biCategoriaTop" style="font-size:1.15rem;">---</div>
+      <small>Boleto con mayor demanda</small>
+    </div>
+
+    <div class="card">
+      <h4>Día con más demanda</h4>
+      <div class="value" id="biDiaTop" style="font-size:1.15rem;">---</div>
+      <small>Según reservaciones/ventas</small>
+    </div>
+
+    <div class="card">
+      <h4>Conversión a pago</h4>
+      <div class="value" id="biConversionPago">0%</div>
+      <small>Pagadas vs total de operaciones</small>
+    </div>
+  </div>
+
+  <div class="insights-grid">
+    <div class="insight-card">
+      <h4>🎟️ Categoría más fuerte</h4>
+      <p id="insightCategoria">Sin datos por ahora.</p>
+    </div>
+
+    <div class="insight-card">
+      <h4>📅 Día recomendado</h4>
+      <p id="insightDia">Sin datos por ahora.</p>
+    </div>
+
+    <div class="insight-card">
+      <h4>💰 Seguimiento de pagos</h4>
+      <p id="insightPago">Sin datos por ahora.</p>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h4>🎟️ Boletos por categoría</h4>
+      <canvas id="chartCategorias"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h4>💳 Reservaciones por estado de pago</h4>
+      <canvas id="chartEstados"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h4>🌐 Reservaciones web vs ventas en taquilla</h4>
+      <canvas id="chartCanales"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h4>📅 Días de la semana con mayor demanda</h4>
+      <canvas id="chartDiasSemana"></canvas>
+    </div>
+
+    <div class="chart-card large">
+      <h4>📊 Tendencia de visitantes esperados por fecha</h4>
+      <canvas id="chartTendencia"></canvas>
+    </div>
+  </div>
+
+  <div id="msgBI" class="message"></div>
+</section>
+    </main>
+  </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-   const API_BASE = '';
+const API_BASE = '';
 let ventaActual = null;
 let categoriasTaquilla = [];
 let ventaTaquillaActual = null;
+
+let chartCategorias = null;
+let chartEstados = null;
+let chartCanales = null;
+let chartDiasSemana = null;
+let chartTendencia = null;
 function mostrarUsuarioPanel(username) {
   const box = document.getElementById('panelUsername');
   if (box) {
@@ -1005,9 +1220,50 @@ function mostrarUsuarioPanel(username) {
       return new Date().toISOString().split('T')[0];
     }
 
-    function money(value) {
-      return '$' + Number(value || 0).toFixed(2);
+   function destruirChart(chart) {
+  if (chart) {
+    chart.destroy();
+  }
+}
+
+function crearGrafica(ctxId, tipo, labels, data, label, extraOptions = {}) {
+  const ctx = document.getElementById(ctxId);
+
+  if (!ctx) return null;
+
+  return new Chart(ctx, {
+    type: tipo,
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: tipo !== 'bar' && tipo !== 'line'
+        }
+      },
+      scales: tipo === 'doughnut' || tipo === 'pie'
+        ? {}
+        : {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0
+              }
+            }
+          },
+      ...extraOptions
     }
+  });
+}
 
     function setMessage(id, text, type = 'ok') {
       const box = document.getElementById(id);
@@ -1660,7 +1916,104 @@ function verDetalleTaquilla() {
     setMessage('msgBuscar', '❌ ' + error.message, 'error');
   }
 }
+async function cargarBI() {
+  clearMessage('msgBI');
 
+  const fecha = document.getElementById('fechaBI').value || todayISO();
+  const dias = document.getElementById('rangoBI').value || '30';
+
+  try {
+    const params = new URLSearchParams();
+    params.set('fecha', fecha);
+    params.set('dias', dias);
+
+    const res = await fetch(`${API_BASE}/api/bi-dashboard?${params.toString()}`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo cargar BI');
+    }
+
+    const resumen = data.resumen || {};
+
+    document.getElementById('biReservacionesWeb').textContent = resumen.reservaciones_web ?? 0;
+    document.getElementById('biVentasTaquilla').textContent = resumen.ventas_taquilla ?? 0;
+    document.getElementById('biPendientesPago').textContent = resumen.pendientes_pago ?? 0;
+    document.getElementById('biIngresosEstimados').textContent = money(resumen.ingresos_estimados);
+    document.getElementById('biIngresosCobrados').textContent = money(resumen.ingresos_cobrados);
+    document.getElementById('biConversionPago').textContent = `${resumen.conversion_pago ?? 0}%`;
+
+    document.getElementById('biCategoriaTop').textContent = data.insights?.categoria_top || 'Sin datos';
+    document.getElementById('biDiaTop').textContent = data.insights?.dia_top || 'Sin datos';
+
+    document.getElementById('insightCategoria').textContent = data.insights?.mensaje_categoria || 'Sin datos por ahora.';
+    document.getElementById('insightDia').textContent = data.insights?.mensaje_dia || 'Sin datos por ahora.';
+    document.getElementById('insightPago').textContent = data.insights?.mensaje_pago || 'Sin datos por ahora.';
+
+    const categorias = data.categorias || [];
+    const estados = data.estados || [];
+    const canales = data.canales || [];
+    const diasSemana = data.dias_semana || [];
+    const tendencia = data.tendencia_dias || [];
+
+    chartCategorias = destruirChart(chartCategorias);
+    chartEstados = destruirChart(chartEstados);
+    chartCanales = destruirChart(chartCanales);
+    chartDiasSemana = destruirChart(chartDiasSemana);
+    chartTendencia = destruirChart(chartTendencia);
+
+    chartCategorias = crearGrafica(
+      'chartCategorias',
+      'bar',
+      categorias.map(c => c.nombre),
+      categorias.map(c => c.cantidad),
+      'Boletos reservados/vendidos'
+    );
+
+    chartEstados = crearGrafica(
+      'chartEstados',
+      'doughnut',
+      estados.map(e => e.estado_pago),
+      estados.map(e => e.total),
+      'Reservaciones por estado'
+    );
+
+    chartCanales = crearGrafica(
+      'chartCanales',
+      'pie',
+      canales.map(c => c.canal_venta === 'web' ? 'Reservación web' : 'Venta taquilla'),
+      canales.map(c => c.total),
+      'Canal'
+    );
+
+    chartDiasSemana = crearGrafica(
+      'chartDiasSemana',
+      'bar',
+      diasSemana.map(d => d.dia_nombre),
+      diasSemana.map(d => d.personas),
+      'Visitantes esperados'
+    );
+
+    chartTendencia = crearGrafica(
+      'chartTendencia',
+      'line',
+      tendencia.map(t => t.fecha_visita),
+      tendencia.map(t => t.personas),
+      'Visitantes esperados',
+      {
+        tension: 0.35
+      }
+    );
+
+    if (!categorias.length && !tendencia.length) {
+      setMessage('msgBI', '⚠️ No hay datos suficientes para graficar en esta fecha o rango.', 'error');
+    } else {
+      setMessage('msgBI', '✅ BI actualizado correctamente.', 'ok');
+    }
+  } catch (error) {
+    setMessage('msgBI', '❌ ' + error.message, 'error');
+  }
+}
     async function cargarCorte() {
       clearMessage('msgCorte');
 
@@ -1861,6 +2214,14 @@ document.getElementById('btnTkVerDetalle').addEventListener('click', verDetalleT
       cargarCorte();
     });
     document.getElementById('btnExportarCorte').addEventListener('click', exportarCorteCSV);
+    document.getElementById('btnBI').addEventListener('click', cargarBI);
+
+document.getElementById('btnBIHoy').addEventListener('click', () => {
+  document.getElementById('fechaBI').value = todayISO();
+  cargarBI();
+});
+
+document.getElementById('rangoBI').addEventListener('change', cargarBI);
 
     document.getElementById('folioBuscar').addEventListener('keydown', e => {
       if (e.key === 'Enter') buscarFolio();
@@ -1874,16 +2235,18 @@ document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVe
   if (!ok) return;
 
   const hoy = todayISO();
-  document.getElementById('fechaVentas').value = hoy;
-  document.getElementById('fechaAccesos').value = hoy;
-  document.getElementById('fechaCorte').value = hoy;
-  document.getElementById('tkFecha').value = hoy;
+ document.getElementById('fechaVentas').value = hoy;
+document.getElementById('fechaAccesos').value = hoy;
+document.getElementById('fechaCorte').value = hoy;
+document.getElementById('fechaBI').value = hoy;
+document.getElementById('tkFecha').value = hoy;
 
   await cargarCategoriasTaquilla();
-  await cargarDashboard();
-  await cargarVentas();
-  await cargarAccesos();
-  await cargarCorte();
+await cargarDashboard();
+await cargarVentas();
+await cargarAccesos();
+await cargarCorte();
+await cargarBI();
 
   setInterval(async () => {
     const sigueOk = await verificarSesionPanel();
@@ -1902,6 +2265,9 @@ document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVe
     if (document.getElementById('panel-corte').classList.contains('active')) {
       cargarCorte();
     }
+    if (document.getElementById('panel-bi').classList.contains('active')) {
+  cargarBI();
+}
   }, 30000);
 });
   </script>

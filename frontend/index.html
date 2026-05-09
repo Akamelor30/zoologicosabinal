@@ -655,9 +655,9 @@
                 <div class="total" id="total">Total: $0.00 MXN</div>
             </div>
 
-            <button type="button" class="btn-comprar" id="btn-comprar" onclick="procesarCompra()">
-                💳 Comprar Boletos y Generar QR
-            </button>
+           <button type="button" class="btn-comprar" id="btn-comprar" onclick="procesarCompra()">
+    🎟️ Reservar Boletos y Generar QR
+</button>
 
             <div id="mensaje" class="mensaje"></div>
         </div>
@@ -709,8 +709,8 @@
         </div>
 
         <div id="qr-generado" style="display: none;" class="qr-container">
-            <h2>✅ ¡Compra exitosa!</h2>
-            <p>Tu código QR fue generado correctamente. Preséntalo en la entrada.</p>
+    <h2>✅ ¡Reservación registrada!</h2>
+    <p>Tu código QR fue generado correctamente. Preséntalo en taquilla para confirmar tu pago.</p>
 
             <div id="qr-code" class="qr-code"></div>
 
@@ -889,16 +889,19 @@
                 <li>${d.nombre} x${d.cantidad} — ${money(d.subtotal)}</li>
             `).join('');
 
-            resumen.innerHTML = `
-                <p><strong>Folio:</strong> ${data.venta.folio}</p>
-                <p><strong>Correo:</strong> ${data.venta.email || 'N/A'}</p>
-                <p><strong>Fecha de visita:</strong> ${data.venta.fecha_visita}</p>
-                <p><strong>Total de personas:</strong> ${data.venta.cantidad_personas}</p>
-                <p><strong>Total pagado:</strong> ${money(data.venta.total)}</p>
-                <p><strong>Correo enviado:</strong> ${data.venta.correo_enviado ? 'Sí ✅' : 'No ⚠️'}</p>
-                <p><strong>Detalle:</strong></p>
-                <ul>${detalleHTML}</ul>
-            `;
+           resumen.innerHTML = `
+    <h2 style="margin:0 0 10px;color:#283618;">✅ Reservación registrada</h2>
+    <p><strong>Folio:</strong> ${data.venta.folio}</p>
+    <p><strong>Correo:</strong> ${data.venta.email || 'N/A'}</p>
+    <p><strong>Fecha de visita:</strong> ${data.venta.fecha_visita}</p>
+    <p><strong>Total de personas:</strong> ${data.venta.cantidad_personas}</p>
+    <p><strong>Total a pagar en taquilla:</strong> ${money(data.venta.total)}</p>
+    <p><strong>Estado del pago:</strong> Pendiente de pago en taquilla</p>
+    <p><strong>Correo enviado:</strong> ${data.venta.correo_enviado ? 'Sí ✅' : 'No ⚠️'}</p>
+    <p><strong>Indicaciones:</strong> 📱 Presenta este QR en taquilla para confirmar tu pago.</p>
+    <p><strong>Detalle:</strong></p>
+    <ul>${detalleHTML}</ul>
+`;
 
             btnDescargar.href = data.venta.qr_url;
             btnDescargar.setAttribute('download', `${data.venta.folio}.png`);
@@ -1105,21 +1108,22 @@
             }
 
             btnComprar.disabled = true;
-            btnComprar.textContent = '⏳ Procesando compra...';
+         btnComprar.textContent = '⏳ Generando reservación...';
 
             try {
                 const response = await fetch(`${API_BASE}/api/venta`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        nombre_cliente,
-                        email,
-                        telefono,
-                        fecha_visita,
-                        detalles,
-                        metodo_pago: 'pago_en_linea',
-                        canal_venta: 'web'
-                    })
+                  body: JSON.stringify({
+    nombre_cliente,
+    email,
+    telefono,
+    fecha_visita,
+    detalles,
+    metodo_pago: 'efectivo',
+    canal_venta: 'web',
+    observaciones: 'Reservación web pendiente de pago en taquilla'
+})
                 });
 
                 const data = await response.json();
@@ -1129,7 +1133,7 @@
                 }
 
                 renderResultadoCompra(data);
-                mostrarMensaje('✅ Compra realizada correctamente. Tu QR ya fue generado.', 'ok');
+            mostrarMensaje('✅ Reservación realizada correctamente. Presenta tu QR en taquilla para confirmar tu pago.', 'ok');
 
             } catch (error) {
                 mostrarMensaje(`❌ ${error.message}`, 'error');
