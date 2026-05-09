@@ -1001,9 +1001,12 @@
       <div class="detail-grid" id="detalleGrid"></div>
 
       <div class="actions-row">
-        <button class="btn btn-primary" id="btnDescargarQRDetalle">Descargar QR</button>
-        <button class="btn btn-secondary" id="btnReimprimirDetalle">Reimprimir comprobante</button>
-        <button class="btn btn-danger" id="btnCancelarVenta">Cancelar venta</button>
+     <div class="actions-row">
+  <button class="btn btn-primary" id="btnDescargarQRDetalle">Descargar QR</button>
+  <button class="btn btn-secondary" id="btnReimprimirDetalle">Reimprimir comprobante</button>
+  <button class="btn btn-primary" id="btnConfirmarPago">Confirmar pago</button>
+  <button class="btn btn-danger" id="btnCancelarVenta">Cancelar venta</button>
+</div>
       </div>
 
       <div class="detail-list">
@@ -1474,6 +1477,61 @@ async function cancelarVentaActual() {
     setMessage('msgBuscar', '❌ ' + error.message, 'error');
   }
 }
+async function confirmarPagoActual() {
+  if (!ventaActual || !ventaActual.folio) {
+    setMessage('msgBuscar', '❌ Primero busca una reservación.', 'error');
+    return;
+  }
+
+  const confirmado = confirm(`¿Confirmar pago de la reservación ${ventaActual.folio}?`);
+  if (!confirmado) return;
+
+  const metodoPago = prompt(
+    'Método de pago: efectivo, tarjeta, transferencia o cortesia',
+    'efectivo'
+  );
+
+  if (metodoPago === null) return;
+
+  const metodoFinal = metodoPago.trim().toLowerCase();
+
+  const metodosValidos = ['efectivo', 'tarjeta', 'transferencia', 'pago_en_linea', 'cortesia'];
+
+  if (!metodosValidos.includes(metodoFinal)) {
+    setMessage('msgBuscar', '❌ Método de pago no válido.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ventas/${encodeURIComponent(ventaActual.folio)}/confirmar-pago`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        metodo_pago: metodoFinal,
+        referencia_pago: 'Pago confirmado desde panel admin'
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo confirmar el pago');
+    }
+
+    setMessage('msgBuscar', '✅ Pago confirmado correctamente. Ahora el QR ya puede validarse en el lector.', 'ok');
+
+    await buscarFolio();
+    await cargarDashboard();
+    await cargarVentas();
+    await cargarCorte();
+
+    if (typeof cargarBI === 'function') {
+      await cargarBI();
+    }
+  } catch (error) {
+    setMessage('msgBuscar', '❌ ' + error.message, 'error');
+  }
+}
 
 async function cargarCategoriasTaquilla() {
   clearMessage('msgTaquilla');
@@ -1858,6 +1916,7 @@ function verDetalleTaquilla() {
   const detalleLista = document.getElementById('detalleLista');
   const accesosLista = document.getElementById('accesosLista');
   const btnCancelar = document.getElementById('btnCancelarVenta');
+  const btnConfirmarPago = document.getElementById('btnConfirmarPago');
 
   if (!folio) {
     setMessage('msgBuscar', '❌ Escribe un folio.', 'error');
@@ -1913,6 +1972,11 @@ function verDetalleTaquilla() {
                       String(v.estado_acceso || '').toLowerCase() === 'cancelado';
 
     btnCancelar.style.display = (accesoUsado || cancelada) ? 'none' : 'inline-block';
+    const pagoPendiente = String(v.estado_pago || '').toLowerCase() === 'pendiente';
+
+btnConfirmarPago.style.display = (!accesoUsado && !cancelada && pagoPendiente)
+  ? 'inline-block'
+  : 'none';
 
     card.style.display = 'block';
   } catch (error) {
@@ -2231,8 +2295,9 @@ document.getElementById('rangoBI').addEventListener('change', cargarBI);
     document.getElementById('folioBuscar').addEventListener('keydown', e => {
       if (e.key === 'Enter') buscarFolio();
     });
-    document.getElementById('btnDescargarQRDetalle').addEventListener('click', descargarQRDetalle);
+document.getElementById('btnDescargarQRDetalle').addEventListener('click', descargarQRDetalle);
 document.getElementById('btnReimprimirDetalle').addEventListener('click', reimprimirDetalle);
+document.getElementById('btnConfirmarPago').addEventListener('click', confirmarPagoActual);
 document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVentaActual);
 
  document.addEventListener('DOMContentLoaded', async () => {
