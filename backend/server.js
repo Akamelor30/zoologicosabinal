@@ -16,7 +16,7 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -111,6 +111,16 @@ const SMTP_PASS = cleanEnv('SMTP_PASS') || '';
 const SMTP_FROM_NAME = cleanEnv('SMTP_FROM_NAME') || 'Zoológico El Sabinal';
 
 const smtpHabilitado = Boolean(SMTP_USER && SMTP_PASS);
+const EMAIL_PROVIDER = cleanEnv('EMAIL_PROVIDER') || 'smtp';
+const RESEND_API_KEY = cleanEnv('RESEND_API_KEY') || '';
+const RESEND_FROM = cleanEnv('RESEND_FROM') || 'Zoológico El Sabinal <onboarding@resend.dev>';
+
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
+console.log('📧 EMAIL DEBUG:', {
+    provider: EMAIL_PROVIDER,
+    hasResendKey: Boolean(RESEND_API_KEY)
+});
 
 console.log('🧪 SMTP DEBUG:', {
     host: SMTP_HOST,
@@ -458,16 +468,41 @@ function construirHtmlCorreo(venta, detalles) {
 }
 
 async function enviarCorreoQR({ email, venta, detalles, qrPath }) {
-    if (!smtpHabilitado) {
+    if (EMAIL_PROVIDER === 'resend') {
+        if (!resend) {
+            return {
+                enviado: false,
+                motivo: 'Resend no configurado. Falta RESEND_API_KEY.'
+            };
+        }
+
+        const qrBase64 = fs.readFileSync(qrPath).toString('base64');
+
+        const { data, error } = await resend.emails.send({
+            from: RESEND_FROM,
+            to: [email],
+            subject: `🎟️ Reservación registrada - ${venta.folio}`,
+            html: construirHtmlCorreo(venta, detalles),
+            attachments: [
+                {
+                    filename: `${venta.folio}.png`,
+                    content: qrBase64
+                }
+            ]
+        });
+
+        if (error) {
+            throw new Error(error.message || JSON.stringify(error));
+        }
+
+        return {
+            enviado: true,
+            respuesta: data?.id || 'Correo enviado por Resend'
+        };
+    }
+
+    if (!smtpHabilitado || !transporter) {
         return { enviado: false, motivo: 'SMTP no configurado' };
-    }
-
-    if (!transporter) {
-        transporter = await crearTransporterSMTP();
-    }
-
-    if (!transporter) {
-        return { enviado: false, motivo: 'No se pudo conectar con el servidor SMTP' };
     }
 
     const info = await transporter.sendMail({
@@ -2179,21 +2214,44 @@ app.get('/api/estadisticas', async (req, res) => {
 // ============================================
 app.get('/api/test-email', async (req, res) => {
     try {
-        if (!smtpHabilitado) {
+        const correoPrueba = SMTP_USER || 'akamelorlorrr@gmail.com';
+
+        if (EMAIL_PROVIDER === 'resend') {
+            if (!resend) {
+                return res.json({
+                    success: false,
+                    message: 'Resend no configurado. Falta RESEND_API_KEY.'
+                });
+            }
+
+            const { data, error } = await resend.emails.send({
+                from: RESEND_FROM,
+                to: [correoPrueba],
+                subject: '✅ Prueba de correo - Zoológico El Sabinal',
+                html: `
+                    <h2>✅ Correo funcionando</h2>
+                    <p>Resend ya está enviando correos desde Railway.</p>
+                `
+            });
+
+            if (error) {
+                return res.json({
+                    success: false,
+                    message: error.message || JSON.stringify(error)
+                });
+            }
+
             return res.json({
-                success: false,
-                message: 'SMTP no configurado. Revisa SMTP_USER y SMTP_PASS.'
+                success: true,
+                message: '✅ Correo enviado correctamente con Resend',
+                data
             });
         }
 
-        if (!transporter) {
-            transporter = await crearTransporterSMTP();
-        }
-
-        if (!transporter) {
+        if (!smtpHabilitado || !transporter) {
             return res.json({
                 success: false,
-                message: 'No se pudo crear conexión SMTP. Revisa logs de Railway.'
+                message: 'SMTP no configurado'
             });
         }
 
