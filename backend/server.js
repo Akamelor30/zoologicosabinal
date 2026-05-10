@@ -16,6 +16,7 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { Resend } = require('resend');
 
 const app = express();
@@ -184,9 +185,13 @@ async function crearTransporterSMTP() {
     }
 }
 
-crearTransporterSMTP().then(t => {
-    transporter = t;
-});
+if (EMAIL_PROVIDER !== 'resend') {
+    crearTransporterSMTP().then(t => {
+        transporter = t;
+    });
+} else {
+    console.log('📧 Usando Resend. SMTP Gmail desactivado.');
+}
 
 // ============================================
 // 🧰 HELPERS
