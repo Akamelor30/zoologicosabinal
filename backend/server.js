@@ -121,36 +121,62 @@ console.log('🧪 SMTP DEBUG:', {
 
 let transporter = null;
 
-if (smtpHabilitado) {
-    transporter = nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: SMTP_PORT,
-        secure: SMTP_PORT === 465,
-        auth: {
-            user: SMTP_USER,
-            pass: SMTP_PASS
-        },
-        tls: {
-            rejectUnauthorized: false
-        },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
-        lookup: (hostname, options, callback) => {
-            dns.lookup(hostname, { family: 4, all: false }, callback);
-        }
+async function resolverIPv4(hostname) {
+    return new Promise((resolve, reject) => {
+        dns.lookup(hostname, { family: 4, all: false }, (error, address) => {
+            if (error) return reject(error);
+            resolve(address);
+        });
     });
-
-    transporter.verify((error) => {
-        if (error) {
-            console.log('❌ Error de conexión SMTP:', error.message);
-        } else {
-            console.log('✅ Correo SMTP listo');
-        }
-    });
-} else {
-    console.log('⚠️ SMTP no configurado. Las ventas sí se registran, pero no se enviarán correos.');
 }
+
+async function crearTransporterSMTP() {
+    if (!smtpHabilitado) {
+        console.log('⚠️ SMTP no configurado. Las ventas sí se registran, pero no se enviarán correos.');
+        return null;
+    }
+
+    try {
+        const smtpIPv4 = await resolverIPv4(SMTP_HOST);
+
+        console.log('📧 SMTP IPv4 resuelto:', {
+            host: SMTP_HOST,
+            ipv4: smtpIPv4,
+            port: SMTP_PORT,
+            user: SMTP_USER,
+            hasPass: Boolean(SMTP_PASS)
+        });
+
+        const nuevoTransporter = nodemailer.createTransport({
+            host: smtpIPv4,
+            port: SMTP_PORT,
+            secure: SMTP_PORT === 465,
+            auth: {
+                user: SMTP_USER,
+                pass: SMTP_PASS
+            },
+            tls: {
+                servername: SMTP_HOST,
+                rejectUnauthorized: false
+            },
+            connectionTimeout: 60000,
+            greetingTimeout: 60000,
+            socketTimeout: 60000
+        });
+
+        await nuevoTransporter.verify();
+
+        console.log('✅ Correo SMTP listo');
+        return nuevoTransporter;
+    } catch (error) {
+        console.log('❌ Error de conexión SMTP:', error.message);
+        return null;
+    }
+}
+
+crearTransporterSMTP().then(t => {
+    transporter = t;
+});
 
 // ============================================
 // 🧰 HELPERS
@@ -432,14 +458,22 @@ function construirHtmlCorreo(venta, detalles) {
 }
 
 async function enviarCorreoQR({ email, venta, detalles, qrPath }) {
-    if (!smtpHabilitado || !transporter) {
+    if (!smtpHabilitado) {
         return { enviado: false, motivo: 'SMTP no configurado' };
     }
 
+    if (!transporter) {
+        transporter = await crearTransporterSMTP();
+    }
+
+    if (!transporter) {
+        return { enviado: false, motivo: 'No se pudo conectar con el servidor SMTP' };
+    }
+
     const info = await transporter.sendMail({
-        from: `${SMTP_FROM_NAME} <${SMTP_USER}>`,
+        from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
         to: email,
-        subject: `🎟️ Tus boletos - ${venta.folio}`,
+        subject: `🎟️ Reservación registrada - ${venta.folio}`,
         html: construirHtmlCorreo(venta, detalles),
         attachments: [
             {
@@ -2145,14 +2179,26 @@ app.get('/api/estadisticas', async (req, res) => {
 // ============================================
 app.get('/api/test-email', async (req, res) => {
     try {
-        if (!smtpHabilitado || !transporter) {
+        if (!smtpHabilitado) {
             return res.json({
                 success: false,
-                message: 'SMTP no configurado'
+                message: 'SMTP no configurado. Revisa SMTP_USER y SMTP_PASS.'
+            });
+        }
+
+        if (!transporter) {
+            transporter = await crearTransporterSMTP();
+        }
+
+        if (!transporter) {
+            return res.json({
+                success: false,
+                message: 'No se pudo crear conexión SMTP. Revisa logs de Railway.'
             });
         }
 
         await transporter.verify();
+
         res.json({
             success: true,
             message: '✅ Conexión SMTP exitosa'
