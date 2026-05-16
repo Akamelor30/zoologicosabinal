@@ -2219,7 +2219,7 @@ app.get('/api/estadisticas', async (req, res) => {
 // ============================================
 app.get('/api/test-email', async (req, res) => {
     try {
-        const correoPrueba = SMTP_USER || 'akamelorlorrr@gmail.com';
+        const correoPrueba = SMTP_USER || 'ramirezerickdamian30@gmail.com';
 
         if (EMAIL_PROVIDER === 'resend') {
             if (!resend) {
