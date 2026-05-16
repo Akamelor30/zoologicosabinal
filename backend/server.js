@@ -404,7 +404,6 @@ async function generarYGuardarQR(folio) {
 
     return qrPath;
 }
-
 function construirHtmlCorreo(venta, detalles) {
     const detallesHTML = detalles.map(d => `
         <li style="background:#f8f9fa;margin:6px 0;padding:10px;border-radius:10px;border-left:4px solid #bc6c25;">
@@ -417,7 +416,7 @@ function construirHtmlCorreo(venta, detalles) {
         <html lang="es">
         <head>
             <meta charset="UTF-8" />
-            <title>Boleto - Zoológico El Sabinal</title>
+            <title>Reservación - Zoológico El Sabinal</title>
         </head>
         <body style="font-family:Segoe UI,Arial,sans-serif;background:#f0f0f0;margin:0;padding:20px;">
             <div style="max-width:650px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.18);">
@@ -428,21 +427,24 @@ function construirHtmlCorreo(venta, detalles) {
 
                 <div style="padding:30px;">
                     <div style="background:#fefae0;padding:18px;border-radius:14px;border-left:8px solid #bc6c25;margin-bottom:22px;">
-                        <h2 style="margin:0 0 10px;color:#283618;">✅ Compra confirmada</h2>
+                        <h2 style="margin:0 0 10px;color:#283618;">✅ Reservación registrada</h2>
                         <p style="margin:6px 0;"><strong>Folio:</strong> ${venta.folio}</p>
                         <p style="margin:6px 0;"><strong>Fecha de visita:</strong> ${formatearFecha(venta.fecha_visita)}</p>
-                        <p style="margin:6px 0;"><strong>Total pagado:</strong> $${Number(venta.total).toFixed(2)} MXN</p>
+                        <p style="margin:6px 0;"><strong>Total a pagar en taquilla:</strong> $${Number(venta.total).toFixed(2)} MXN</p>
                         <p style="margin:6px 0;"><strong>Total de personas:</strong> ${venta.cantidad_personas}</p>
+                        <p style="margin:6px 0;"><strong>Estado del pago:</strong> Pendiente de pago en taquilla</p>
                     </div>
 
-                    <h3 style="color:#283618;border-bottom:3px solid #bc6c25;padding-bottom:8px;">🎟️ Detalle de compra</h3>
+                    <h3 style="color:#283618;border-bottom:3px solid #bc6c25;padding-bottom:8px;">🎟️ Detalle de la reservación</h3>
                     <ul style="list-style:none;padding:0;margin:0 0 20px 0;">
                         ${detallesHTML}
                     </ul>
 
                     <div style="text-align:center;margin:25px 0;padding:20px;background:#f8f9fa;border-radius:15px;border:2px dashed #bc6c25;">
-                        <p style="font-size:1.1em;color:#2d6a4f;margin-bottom:15px;"><strong>📱 Presenta este QR en la entrada</strong></p>
-                        <img src="cid:qr-unico" style="max-width:230px;border:5px solid white;border-radius:20px;box-shadow:0 5px 15px rgba(0,0,0,0.2);" />
+                        <p style="font-size:1.1em;color:#2d6a4f;margin-bottom:15px;">
+                            <strong>📱 Presenta este QR en taquilla para confirmar tu pago</strong>
+                        </p>
+                        <img src="cid:qr-unico" alt="QR de reservación" style="max-width:230px;border:5px solid white;border-radius:20px;box-shadow:0 5px 15px rgba(0,0,0,0.2);" />
                     </div>
 
                     <div style="background:#283618;color:#fff;padding:18px;border-radius:14px;">
@@ -454,12 +456,12 @@ function construirHtmlCorreo(venta, detalles) {
 
                     <div style="margin-top:20px;padding:14px;background:#fff3cd;border-radius:10px;border-left:5px solid #856404;">
                         <p style="margin:0;color:#856404;">
-                            <strong>⚠️ Importante:</strong> este QR corresponde a una compra completa. Es válido para la fecha seleccionada y se marca como usado al ingresar.
+                            <strong>⚠️ Importante:</strong> este QR corresponde a una reservación. Deberás presentarlo en taquilla y realizar el pago para poder ingresar. El QR será marcado como usado al momento de validar el acceso.
                         </p>
                     </div>
 
                     <p style="text-align:center;margin-top:25px;color:#666;font-size:0.9em;">
-                        🌿 Gracias por visitar el Zoológico El Sabinal
+                        🌿 Gracias por reservar tu visita al Zoológico El Sabinal
                     </p>
                 </div>
 
@@ -471,7 +473,6 @@ function construirHtmlCorreo(venta, detalles) {
         </html>
     `;
 }
-
 async function enviarCorreoQR({ email, venta, detalles, qrPath }) {
     if (EMAIL_PROVIDER === 'resend') {
         if (!resend) {
@@ -488,12 +489,13 @@ async function enviarCorreoQR({ email, venta, detalles, qrPath }) {
             to: [email],
             subject: `🎟️ Reservación registrada - ${venta.folio}`,
             html: construirHtmlCorreo(venta, detalles),
-            attachments: [
-                {
-                    filename: `${venta.folio}.png`,
-                    content: qrBase64
-                }
-            ]
+           attachments: [
+    {
+        filename: `${venta.folio}.png`,
+        content: qrBase64,
+        contentId: 'qr-unico'
+    }
+]
         });
 
         if (error) {
