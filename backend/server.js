@@ -129,7 +129,34 @@ console.log('🧪 SMTP DEBUG:', {
     user: SMTP_USER,
     hasPass: Boolean(SMTP_PASS)
 });
+function revisarConfiguracionInicial() {
+    const faltantes = [];
 
+    if (!DB_CONFIG.host) faltantes.push('DB_HOST');
+    if (!DB_CONFIG.user) faltantes.push('DB_USER');
+    if (!DB_CONFIG.password) faltantes.push('DB_PASSWORD');
+    if (!DB_CONFIG.database) faltantes.push('DB_NAME');
+
+    if (!cleanEnv('PANEL_USER')) faltantes.push('PANEL_USER');
+    if (!cleanEnv('PANEL_PASS')) faltantes.push('PANEL_PASS');
+
+    if (faltantes.length) {
+        console.log('⚠️ Variables faltantes o vacías:', faltantes.join(', '));
+        console.log('⚠️ El servidor puede iniciar, pero algunas funciones pueden fallar.');
+    } else {
+        console.log('✅ Variables principales configuradas.');
+    }
+
+    if (EMAIL_PROVIDER === 'resend' && !RESEND_API_KEY) {
+        console.log('⚠️ EMAIL_PROVIDER está en resend, pero falta RESEND_API_KEY.');
+    }
+
+    if (EMAIL_PROVIDER === 'resend' && RESEND_FROM.includes('onboarding@resend.dev')) {
+        console.log('⚠️ Estás usando onboarding@resend.dev. Para producción conviene usar un correo con dominio verificado.');
+    }
+}
+
+revisarConfiguracionInicial();
 let transporter = null;
 
 async function resolverIPv4(hostname) {
@@ -895,10 +922,12 @@ app.post('/panel-login', (req, res) => {
 
     const session = crearPanelSession(username);
 
-    res.setHeader(
-        'Set-Cookie',
-        `panel_session=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${PANEL_SESSION_HOURS * 60 * 60}`
-    );
+ const cookieSecure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+
+res.setHeader(
+    'Set-Cookie',
+    `panel_session=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${PANEL_SESSION_HOURS * 60 * 60}${cookieSecure}`
+);
 
     return res.redirect(nextUrl);
 });
@@ -911,7 +940,8 @@ app.get('/panel-logout', (req, res) => {
         panelSessions.delete(token);
     }
 
-    res.setHeader('Set-Cookie', 'panel_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+    const cookieSecure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+res.setHeader('Set-Cookie', `panel_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${cookieSecure}`);
     res.redirect('/panel-login');
 });
 
