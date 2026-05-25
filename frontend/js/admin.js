@@ -353,16 +353,26 @@ async function cargarCategoriasTaquilla() {
 function renderCategoriasTaquilla() {
   const wrap = document.getElementById('tkCategoriasWrap');
 
-  if (!categoriasTaquilla.length) {
-    wrap.innerHTML = 'No hay categorías activas.';
+  const categoriasVisibles = (categoriasTaquilla || []).filter(cat => {
+    const clave = String(cat.clave || '').toUpperCase();
+    const nombre = String(cat.nombre || '').toLowerCase();
+    return clave !== 'NIN' && nombre !== 'niño' && Number(cat.precio || 0) > 0;
+  });
+
+  if (!categoriasVisibles.length) {
+    wrap.innerHTML = 'No hay categorías activas para taquilla.';
     return;
   }
 
-  wrap.innerHTML = categoriasTaquilla.map(cat => `
+  wrap.innerHTML = categoriasVisibles.map(cat => `
     <div class="categoria-row">
       <div>
         <div class="cat-nombre">${cat.nombre}</div>
         <small>${cat.clave || ''}</small>
+        <small class="cat-desc">
+          ${cat.descripcion || ''}
+          ${Number(cat.requiere_credencial) === 1 ? ' · Requiere credencial vigente' : ''}
+        </small>
       </div>
       <div class="cat-precio">${money(cat.precio)}</div>
       <input
@@ -439,7 +449,7 @@ async function venderEnTaquilla() {
   const telefono = document.getElementById('tkTelefono').value.trim();
   const emailCapturado = document.getElementById('tkEmail').value.trim();
   const fecha = document.getElementById('tkFecha').value;
-  const metodoPago = document.getElementById('tkMetodoPago').value;
+const metodoPago = 'efectivo';
 
   const detalles = obtenerDetallesTaquilla();
 
@@ -486,13 +496,56 @@ async function venderEnTaquilla() {
       email: emailFinal
     };
 
-    document.getElementById('tkResumenVenta').innerHTML = `
-      <p><strong>Folio:</strong> ${data.venta.folio}</p>
-      <p><strong>Total:</strong> ${money(data.venta.total)}</p>
-      <p><strong>Personas:</strong> ${data.venta.cantidad_personas}</p>
-      <p><strong>Fecha visita:</strong> ${data.venta.fecha_visita}</p>
-      <p><strong>Método de pago:</strong> ${metodoPago}</p>
-    `;
+const detalleTicketHtml = (data.detalles || []).map(d => `
+  <div class="ticket-row">
+    <span>${d.nombre} x${d.cantidad}</span>
+    <strong>${money(d.subtotal)}</strong>
+  </div>
+`).join('');
+
+document.getElementById('tkResumenVenta').innerHTML = `
+  <div class="ticket-preview">
+    <h4>🦁 Zoológico El Sabinal</h4>
+    <p><strong>Ticket de compra en taquilla</strong></p>
+
+    <div class="ticket-row">
+      <span>Folio</span>
+      <strong>${data.venta.folio}</strong>
+    </div>
+
+    <div class="ticket-row">
+      <span>Cliente</span>
+      <strong>${nombre || 'Cliente de taquilla'}</strong>
+    </div>
+
+    <div class="ticket-row">
+      <span>Fecha de visita</span>
+      <strong>${data.venta.fecha_visita}</strong>
+    </div>
+
+    <div class="ticket-row">
+      <span>Método de pago</span>
+      <strong>Efectivo</strong>
+    </div>
+
+    <div class="ticket-row">
+      <span>Estado</span>
+      <strong>Pagado</strong>
+    </div>
+
+    <hr>
+
+    ${detalleTicketHtml}
+
+    <div class="ticket-total">
+      Total pagado: ${money(data.venta.total)}
+    </div>
+
+    <p style="margin-top:12px;color:#5f6b7a;">
+      Conserva este ticket como comprobante de compra.
+    </p>
+  </div>
+`;
 
     document.getElementById('tkQrImg').src = data.venta.qr_url;
     document.getElementById('tkResultado').classList.add('show');
@@ -527,53 +580,143 @@ function imprimirVentaTaquilla() {
 
   const detallesHtml = (ventaTaquillaActual.detalles || []).length
     ? ventaTaquillaActual.detalles.map(d => `
-        <li>${d.nombre || 'Boleto'} x${d.cantidad} — ${money(d.subtotal)}</li>
+        <tr>
+          <td>${d.nombre || 'Boleto'}</td>
+          <td style="text-align:center;">${d.cantidad}</td>
+          <td style="text-align:right;">${money(d.precio_unitario)}</td>
+          <td style="text-align:right;">${money(d.subtotal)}</td>
+        </tr>
       `).join('')
-    : '<li>Sin detalle</li>';
+    : '<tr><td colspan="4">Sin detalle</td></tr>';
 
-  const popup = window.open('', '_blank', 'width=900,height=700');
+  const popup = window.open('', '_blank', 'width=420,height=700');
+
   popup.document.write(`
     <!DOCTYPE html>
     <html lang="es">
     <head>
       <meta charset="UTF-8">
-      <title>Comprobante ${ventaTaquillaActual.folio}</title>
+      <title>Ticket ${ventaTaquillaActual.folio}</title>
       <style>
-        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
-        .wrap { max-width: 720px; margin: auto; border: 2px solid #d4a373; border-radius: 18px; padding: 24px; }
-        h1 { margin-top: 0; color: #1b4332; }
-        .box { background: #f8f9fa; padding: 14px; border-radius: 12px; margin: 10px 0; }
-        .qr { text-align: center; margin: 20px 0; }
-        .qr img { max-width: 220px; border: 1px solid #ccc; padding: 10px; border-radius: 12px; }
-        ul { margin: 0; padding-left: 20px; }
+        * { box-sizing: border-box; }
+        body {
+          font-family: Arial, sans-serif;
+          color: #111;
+          margin: 0;
+          padding: 16px;
+          background: #fff;
+        }
+        .ticket {
+          width: 100%;
+          max-width: 360px;
+          margin: auto;
+          border: 1px dashed #111;
+          padding: 16px;
+        }
+        h1 {
+          font-size: 20px;
+          text-align: center;
+          margin: 0 0 6px;
+        }
+        .center {
+          text-align: center;
+        }
+        .muted {
+          color: #555;
+          font-size: 12px;
+        }
+        .line {
+          border-top: 1px dashed #111;
+          margin: 12px 0;
+        }
+        .row {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          margin: 6px 0;
+          font-size: 13px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 8px;
+          font-size: 12px;
+        }
+        th, td {
+          padding: 5px 2px;
+          border-bottom: 1px solid #eee;
+        }
+        th {
+          text-align: left;
+        }
+        .total {
+          font-size: 18px;
+          font-weight: bold;
+          text-align: right;
+          margin-top: 12px;
+        }
+        .thanks {
+          text-align: center;
+          font-size: 12px;
+          margin-top: 14px;
+        }
+        @media print {
+          body { padding: 0; }
+          .ticket { border: none; }
+        }
       </style>
     </head>
     <body>
-      <div class="wrap">
+      <div class="ticket">
         <h1>🦁 Zoológico El Sabinal</h1>
-        <div class="box"><strong>Folio:</strong> ${ventaTaquillaActual.folio}</div>
-        <div class="box"><strong>Cliente:</strong> ${ventaTaquillaActual.nombre_cliente || 'Cliente de taquilla'}</div>
-        <div class="box"><strong>Email:</strong> ${ventaTaquillaActual.email || 'N/A'}</div>
-        <div class="box"><strong>Teléfono:</strong> ${ventaTaquillaActual.telefono || 'N/A'}</div>
-        <div class="box"><strong>Fecha visita:</strong> ${ventaTaquillaActual.fecha_visita ? String(ventaTaquillaActual.fecha_visita).slice(0,10) : 'N/A'}</div>
-        <div class="box"><strong>Total:</strong> ${money(ventaTaquillaActual.total)}</div>
-        <div class="box"><strong>Método de pago:</strong> ${ventaTaquillaActual.metodo_pago || 'N/A'}</div>
+        <div class="center muted">La Trinitaria, Chiapas</div>
+        <div class="center muted">Ticket de compra en taquilla</div>
 
-        <div class="qr">
-          <img src="${API_BASE}/qrs/${encodeURIComponent(ventaTaquillaActual.folio)}.png" alt="QR">
-        </div>
+        <div class="line"></div>
 
-        <div class="box">
-          <strong>Detalle de compra</strong>
-          <ul>${detallesHtml}</ul>
+        <div class="row"><span>Folio:</span><strong>${ventaTaquillaActual.folio}</strong></div>
+        <div class="row"><span>Cliente:</span><strong>${ventaTaquillaActual.nombre_cliente || 'Cliente de taquilla'}</strong></div>
+        <div class="row"><span>Teléfono:</span><strong>${ventaTaquillaActual.telefono || 'N/A'}</strong></div>
+        <div class="row"><span>Correo:</span><strong>${ventaTaquillaActual.email || 'N/A'}</strong></div>
+        <div class="row"><span>Fecha visita:</span><strong>${String(ventaTaquillaActual.fecha_visita || '').slice(0,10)}</strong></div>
+        <div class="row"><span>Método:</span><strong>Efectivo</strong></div>
+        <div class="row"><span>Estado:</span><strong>Pagado</strong></div>
+
+        <div class="line"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Boleto</th>
+              <th style="text-align:center;">Cant.</th>
+              <th style="text-align:right;">Precio</th>
+              <th style="text-align:right;">Subt.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${detallesHtml}
+          </tbody>
+        </table>
+
+        <div class="total">Total: ${money(ventaTaquillaActual.total)}</div>
+
+        <div class="line"></div>
+
+        <div class="thanks">
+          Gracias por tu visita 🌿<br>
+          Conserva este ticket como comprobante.
         </div>
       </div>
+
       <script>
-        window.onload = function() { window.print(); }
+        window.onload = function() {
+          window.print();
+        }
       <\/script>
     </body>
     </html>
   `);
+
   popup.document.close();
 }
 

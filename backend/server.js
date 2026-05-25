@@ -1116,13 +1116,7 @@ app.post('/api/venta', async (req, res) => {
         const folio = generarFolio();
         const qrToken = generarQrToken();
 
-       const metodoPagoFinal = canalVentaFinal === 'web'
-    ? 'efectivo'
-    : (
-        ['efectivo', 'tarjeta', 'transferencia', 'pago_en_linea', 'cortesia'].includes(metodo_pago)
-            ? metodo_pago
-            : 'efectivo'
-      );
+const metodoPagoFinal = 'efectivo';
 
 const estadoPagoFinal = canalVentaFinal === 'web'
     ? 'pendiente'
@@ -1207,7 +1201,7 @@ const estadoPagoFinal = canalVentaFinal === 'web'
         let correoInfo = null;
 
         // Solo intentar correo si sí existe email
-        if (emailFinal) {
+        if (emailFinal && canalVentaFinal === 'web') {
             try {
                 const resultadoCorreo = await enviarCorreoQR({
                     email: emailFinal,
@@ -1239,12 +1233,14 @@ const estadoPagoFinal = canalVentaFinal === 'web'
                 };
                 console.log('⚠️ La venta se guardó, pero falló el correo:', correoError.message);
             }
-        } else {
-            correoInfo = {
-                enviado: false,
-                motivo: 'Venta sin correo; no se envió QR por email'
-            };
-        }
+     } else {
+    correoInfo = {
+        enviado: false,
+        motivo: canalVentaFinal === 'taquilla'
+            ? 'Venta de taquilla: ticket generado en el panel. Envío por correo pendiente de implementar.'
+            : 'Venta sin correo; no se envió QR por email'
+    };
+}
 
         res.json({
             success: true,

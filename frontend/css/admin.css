@@ -717,4 +717,57 @@
         grid-template-columns: 1fr;
       }
     }
-  
+  .field-help {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.categoria-row {
+  grid-template-columns: 1fr auto auto;
+}
+
+.categoria-row .cat-desc {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.ticket-preview {
+  background: #ffffff;
+  border: 2px dashed #bc6c25;
+  border-radius: 18px;
+  padding: 18px;
+  color: #283618;
+}
+
+.ticket-preview h4 {
+  margin: 0 0 10px;
+  color: #1b4332;
+}
+
+.ticket-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.ticket-row:last-child {
+  border-bottom: none;
+}
+
+.ticket-total {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fefae0;
+  border: 2px solid #d4a373;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #bc6c25;
+  text-align: right;
+}

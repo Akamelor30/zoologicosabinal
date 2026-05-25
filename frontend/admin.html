@@ -111,16 +111,13 @@
           <input type="date" id="tkFecha">
         </div>
 
-        <div class="field">
-          <label for="tkMetodoPago">Método de pago</label>
-          <select id="tkMetodoPago">
-            <option value="efectivo">Efectivo</option>
-            <option value="tarjeta">Tarjeta</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="pago_en_linea">Pago en línea</option>
-            <option value="cortesia">Cortesía</option>
-          </select>
-        </div>
+      <div class="field">
+  <label for="tkMetodoPago">Método de pago</label>
+  <select id="tkMetodoPago">
+    <option value="efectivo" selected>Efectivo</option>
+  </select>
+  <small class="field-help">La venta en taquilla se registra únicamente en efectivo.</small>
+</div>
       </div>
 
       <div class="taquilla-actions">
@@ -154,20 +151,20 @@
     </div>
   </div>
 
-  <div class="resultado-taquilla" id="tkResultado">
-    <h4 style="margin-top:0;">✅ Venta generada correctamente</h4>
-    <div id="tkResumenVenta"></div>
+<div class="resultado-taquilla" id="tkResultado">
+  <h4 style="margin-top:0;">✅ Ticket de compra generado</h4>
+  <div id="tkResumenVenta"></div>
 
-    <div class="qr-wrap">
-      <img id="tkQrImg" src="" alt="QR de la venta">
-    </div>
-
-    <div class="actions-row">
-      <button class="btn btn-primary" id="btnTkDescargarQR">Descargar QR</button>
-      <button class="btn btn-secondary" id="btnTkImprimir">Imprimir comprobante</button>
-      <button class="btn btn-secondary" id="btnTkVerDetalle">Ver en buscar por folio</button>
-    </div>
+  <div class="qr-wrap" style="display:none;">
+    <img id="tkQrImg" src="" alt="QR interno de la venta">
   </div>
+
+  <div class="actions-row">
+    <button class="btn btn-secondary" id="btnTkImprimir">Imprimir ticket</button>
+    <button class="btn btn-secondary" id="btnTkVerDetalle">Ver en buscar por folio</button>
+    <button class="btn btn-primary" id="btnTkDescargarQR" style="display:none;">Descargar QR interno</button>
+  </div>
+</div>
 </section>
 
       <section class="panel" id="panel-ventas">
