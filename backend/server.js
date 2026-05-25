@@ -967,6 +967,7 @@ app.use('/api/test-email', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
 app.use(/^\/api\/ventas\/[^/]+\/confirmar-pago$/, requirePanelAuth);
+app.use(/^\/api\/ventas\/[^/]+\/registrar-entrada$/, requirePanelAuth);
 
 // ============================================
 // 🖼️ QR DINÁMICO POR FOLIO
@@ -1760,6 +1761,128 @@ app.post('/api/ventas/:folio/confirmar-pago', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error confirmando pago',
+            error: error.message
+        });
+    } finally {
+        conn.release();
+    }
+});
+
+// ============================================
+// 🚪 REGISTRAR ENTRADA MANUAL POR FOLIO
+// Para tickets de taquilla o ventas ya pagadas
+// ============================================
+app.post('/api/ventas/:folio/registrar-entrada', async (req, res) => {
+    const conn = await pool.getConnection();
+
+    try {
+        const folio = req.params.folio;
+        const {
+            taquillero_id = null,
+            dispositivo = 'Registro manual desde panel',
+            observaciones = 'Entrada registrada manualmente desde panel admin'
+        } = req.body || {};
+
+        await conn.beginTransaction();
+
+        const [rows] = await conn.query(`
+            SELECT *
+            FROM ventas
+            WHERE folio = ?
+            LIMIT 1
+        `, [folio]);
+
+        if (!rows.length) {
+            await conn.rollback();
+            return res.status(404).json({
+                success: false,
+                message: 'Venta no encontrada'
+            });
+        }
+
+        const venta = rows[0];
+
+        if (venta.estado_pago !== 'pagado') {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'No se puede registrar entrada porque el pago no está confirmado'
+            });
+        }
+
+        if (venta.estado_pago === 'cancelado' || venta.estado_acceso === 'cancelado') {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'No se puede registrar entrada de una venta cancelada'
+            });
+        }
+
+        if (venta.estado_acceso === 'usado' || Number(venta.qr_usado) === 1) {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'Esta entrada ya fue registrada anteriormente'
+            });
+        }
+
+        const ahoraZoo = fechaHoraZoo();
+        const hoy = ahoraZoo.fecha;
+        const horaActual = ahoraZoo.hora;
+        const minutoActual = ahoraZoo.minuto;
+        const fechaVenta = String(venta.fecha_visita).slice(0, 10);
+
+        if (fechaVenta !== hoy) {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: `La entrada corresponde a la fecha ${fechaVenta}. Hoy en el zoológico es ${hoy}.`
+            });
+        }
+
+        if (horaActual < 9 || horaActual >= 17) {
+            await conn.rollback();
+            return res.status(400).json({
+                success: false,
+                message: `No se puede registrar entrada fuera del horario del zoológico. Hora actual: ${String(horaActual).padStart(2, '0')}:${String(minutoActual).padStart(2, '0')}`
+            });
+        }
+
+        await registrarAcceso({
+            conn,
+            ventaId: venta.id,
+            taquilleroId: taquillero_id,
+            dispositivo,
+            resultado: 'aceptado',
+            ip: obtenerIP(req),
+            observaciones
+        });
+
+        await conn.query(`
+            UPDATE ventas
+            SET qr_usado = 1,
+                estado_acceso = 'usado',
+                fecha_uso = NOW(),
+                observaciones = CONCAT(
+                    IFNULL(observaciones, ''),
+                    CASE WHEN IFNULL(observaciones, '') = '' THEN '' ELSE ' | ' END,
+                    'Entrada registrada manualmente'
+                )
+            WHERE id = ?
+        `, [venta.id]);
+
+        await conn.commit();
+
+        res.json({
+            success: true,
+            message: '✅ Entrada registrada correctamente'
+        });
+    } catch (error) {
+        try { await conn.rollback(); } catch {}
+
+        res.status(500).json({
+            success: false,
+            message: 'Error registrando la entrada',
             error: error.message
         });
     } finally {

@@ -330,6 +330,52 @@ async function confirmarPagoActual() {
   }
 }
 
+
+
+// ✅ PEGAR AQUÍ
+async function registrarEntradaManualActual() {
+  if (!ventaActual || !ventaActual.folio) {
+    setMessage('msgBuscar', '❌ Primero busca una venta.', 'error');
+    return;
+  }
+
+  const confirmado = confirm(`¿Registrar entrada manual para el folio ${ventaActual.folio}?`);
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ventas/${encodeURIComponent(ventaActual.folio)}/registrar-entrada`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dispositivo: 'Registro manual desde panel admin',
+        observaciones: 'Entrada manual de ticket de taquilla'
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo registrar la entrada');
+    }
+
+    setMessage('msgBuscar', '✅ Entrada registrada correctamente.', 'ok');
+
+    await buscarFolio();
+    await cargarDashboard();
+    await cargarVentas();
+    await cargarAccesos();
+    await cargarCorte();
+
+    if (typeof cargarBI === 'function') {
+      await cargarBI();
+    }
+  } catch (error) {
+    setMessage('msgBuscar', '❌ ' + error.message, 'error');
+  }
+}
+
+
+
 async function cargarCategoriasTaquilla() {
   clearMessage('msgTaquilla');
 
@@ -857,6 +903,7 @@ function verDetalleTaquilla() {
   const accesosLista = document.getElementById('accesosLista');
   const btnCancelar = document.getElementById('btnCancelarVenta');
   const btnConfirmarPago = document.getElementById('btnConfirmarPago');
+  const btnRegistrarEntrada = document.getElementById('btnRegistrarEntrada');
 
   if (!folio) {
     setMessage('msgBuscar', '❌ Escribe un folio.', 'error');
@@ -915,6 +962,12 @@ function verDetalleTaquilla() {
     const pagoPendiente = String(v.estado_pago || '').toLowerCase() === 'pendiente';
 
 btnConfirmarPago.style.display = (!accesoUsado && !cancelada && pagoPendiente)
+  ? 'inline-block'
+  : 'none';
+  const pagoPagado = String(v.estado_pago || '').toLowerCase() === 'pagado';
+const accesoPendiente = String(v.estado_acceso || '').toLowerCase() === 'pendiente';
+
+btnRegistrarEntrada.style.display = (!cancelada && pagoPagado && accesoPendiente)
   ? 'inline-block'
   : 'none';
 
@@ -1239,6 +1292,7 @@ document.getElementById('btnDescargarQRDetalle').addEventListener('click', desca
 document.getElementById('btnReimprimirDetalle').addEventListener('click', reimprimirDetalle);
 document.getElementById('btnConfirmarPago').addEventListener('click', confirmarPagoActual);
 document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVentaActual);
+document.getElementById('btnRegistrarEntrada').addEventListener('click', registrarEntradaManualActual);
 
  document.addEventListener('DOMContentLoaded', async () => {
   const ok = await verificarSesionPanel();
