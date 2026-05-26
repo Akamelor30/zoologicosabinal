@@ -83,12 +83,34 @@
         <div id="msgDashboard" class="message"></div>
       </section>
 
-      <section class="panel" id="panel-taquilla">
-  <h3>🏷️ Venta en taquilla</h3>
+   <section class="panel" id="panel-taquilla">
+  <div class="taquilla-hero">
+    <div>
+      <span class="module-kicker">Caja / Taquilla</span>
+      <h3>🏷️ Venta en taquilla</h3>
+      <p>Registra ventas presenciales, cobra en efectivo y genera el ticket de compra para el visitante.</p>
+    </div>
 
-  <div class="taquilla-layout">
-    <div class="taquilla-box">
-      <h4>Datos de la venta</h4>
+    <div class="taquilla-status">
+      <small>Estado de caja</small>
+      <strong>🟢 Operativa</strong>
+    </div>
+  </div>
+
+  <div class="taquilla-alert">
+    <strong>ℹ️ Nota:</strong> Menores de 5 años entran gratis y no requieren boleto.  
+    Estudiantes deben presentar credencial vigente.
+  </div>
+
+  <div class="taquilla-layout pro">
+    <div class="taquilla-card venta-form-card">
+      <div class="section-title-row">
+        <div>
+          <h4>Datos del visitante</h4>
+          <p>Información básica para identificar el ticket.</p>
+        </div>
+        <span class="pill-soft">Pago en efectivo</span>
+      </div>
 
       <div class="taquilla-grid">
         <div class="field">
@@ -102,7 +124,7 @@
         </div>
 
         <div class="field">
-          <label for="tkEmail">Correo (opcional)</label>
+          <label for="tkEmail">Correo opcional</label>
           <input type="email" id="tkEmail" placeholder="Ej. cliente@gmail.com">
         </div>
 
@@ -111,60 +133,80 @@
           <input type="date" id="tkFecha">
         </div>
 
-      <div class="field">
-  <label for="tkMetodoPago">Método de pago</label>
-  <select id="tkMetodoPago">
-    <option value="efectivo" selected>Efectivo</option>
-  </select>
-  <small class="field-help">La venta en taquilla se registra únicamente en efectivo.</small>
-</div>
+        <div class="field">
+          <label for="tkMetodoPago">Método de pago</label>
+          <select id="tkMetodoPago">
+            <option value="efectivo" selected>Efectivo</option>
+          </select>
+          <small class="field-help">La venta en taquilla se registra únicamente en efectivo.</small>
+        </div>
       </div>
 
       <div class="taquilla-actions">
         <button class="btn btn-secondary" id="btnTkHoy">Usar fecha de hoy</button>
-        <button class="btn btn-secondary" id="btnTkLimpiar">Limpiar</button>
+        <button class="btn btn-outline" id="btnTkLimpiar">Limpiar venta</button>
       </div>
 
       <div id="msgTaquilla" class="message"></div>
     </div>
 
-    <div class="taquilla-box">
-      <h4>Boletos a vender</h4>
-      <div id="tkCategoriasWrap">
-        Cargando categorías...
+    <div class="taquilla-card boletos-card">
+      <div class="section-title-row">
+        <div>
+          <h4>Boletos disponibles</h4>
+          <p>Selecciona las cantidades con los botones de control.</p>
+        </div>
       </div>
 
-      <div class="resumen-taquilla">
+      <div id="tkCategoriasWrap" class="boleto-grid">
+        Cargando categorías...
+      </div>
+    </div>
+
+    <div class="taquilla-card resumen-caja">
+      <div class="section-title-row">
+        <div>
+          <h4>Resumen de cobro</h4>
+          <p>Revisa el total antes de generar el ticket.</p>
+        </div>
+      </div>
+
+      <div class="resumen-taquilla resumen-pro">
         <div class="resumen-item">
           <h5>Total personas</h5>
           <div class="v" id="tkTotalPersonas">0</div>
         </div>
-        <div class="resumen-item">
+
+        <div class="resumen-item total-destacado">
           <h5>Total a cobrar</h5>
           <div class="v" id="tkTotalMonto">$0.00</div>
         </div>
       </div>
 
-      <div class="taquilla-actions">
-        <button class="btn btn-primary" id="btnTkVender">Generar venta en taquilla</button>
-      </div>
+      <button class="btn btn-primary btn-cobrar" id="btnTkVender">
+        💵 Cobrar e imprimir ticket
+      </button>
+
+      <p class="mini-help">
+        Al generar la venta, el sistema la registrará como pagada y mostrará el ticket.
+      </p>
     </div>
   </div>
 
-<div class="resultado-taquilla" id="tkResultado">
-  <h4 style="margin-top:0;">✅ Ticket de compra generado</h4>
-  <div id="tkResumenVenta"></div>
+  <div class="resultado-taquilla" id="tkResultado">
+    <h4 style="margin-top:0;">✅ Ticket de compra generado</h4>
+    <div id="tkResumenVenta"></div>
 
-  <div class="qr-wrap" style="display:none;">
-    <img id="tkQrImg" src="" alt="QR interno de la venta">
-  </div>
+    <div class="qr-wrap" style="display:none;">
+      <img id="tkQrImg" src="" alt="QR interno de la venta">
+    </div>
 
-  <div class="actions-row">
-    <button class="btn btn-secondary" id="btnTkImprimir">Imprimir ticket</button>
-    <button class="btn btn-secondary" id="btnTkVerDetalle">Ver en buscar por folio</button>
-    <button class="btn btn-primary" id="btnTkDescargarQR" style="display:none;">Descargar QR interno</button>
+    <div class="actions-row">
+      <button class="btn btn-secondary" id="btnTkImprimir">Imprimir ticket</button>
+      <button class="btn btn-secondary" id="btnTkVerDetalle">Ver en buscar por folio</button>
+      <button class="btn btn-primary" id="btnTkDescargarQR" style="display:none;">Descargar QR interno</button>
+    </div>
   </div>
-</div>
 </section>
 
       <section class="panel" id="panel-ventas">

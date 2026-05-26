@@ -399,6 +399,13 @@ async function cargarCategoriasTaquilla() {
 function renderCategoriasTaquilla() {
   const wrap = document.getElementById('tkCategoriasWrap');
 
+  const iconos = {
+    INF: '🧒',
+    ADU: '🧑',
+    AMY: '👴',
+    EST: '🎓'
+  };
+
   const categoriasVisibles = (categoriasTaquilla || []).filter(cat => {
     const clave = String(cat.clave || '').toUpperCase();
     const nombre = String(cat.nombre || '').toLowerCase();
@@ -410,29 +417,53 @@ function renderCategoriasTaquilla() {
     return;
   }
 
-  wrap.innerHTML = categoriasVisibles.map(cat => `
-    <div class="categoria-row">
-      <div>
-        <div class="cat-nombre">${cat.nombre}</div>
-        <small>${cat.clave || ''}</small>
-        <small class="cat-desc">
-          ${cat.descripcion || ''}
-          ${Number(cat.requiere_credencial) === 1 ? ' · Requiere credencial vigente' : ''}
-        </small>
+  wrap.innerHTML = categoriasVisibles.map(cat => {
+    const clave = String(cat.clave || '').toUpperCase();
+    const icono = iconos[clave] || '🎟️';
+
+    return `
+      <div class="categoria-card" data-card-categoria="${cat.id}">
+        <div class="cat-main">
+          <div class="cat-icon">${icono}</div>
+          <div>
+            <div class="cat-nombre">${cat.nombre}</div>
+            <div class="cat-meta">
+              ${cat.descripcion || 'Boleto de acceso al zoológico'}
+              ${Number(cat.requiere_credencial) === 1 ? '<br><strong>Requiere credencial vigente</strong>' : ''}
+            </div>
+            <span class="cat-precio">${money(cat.precio)}</span>
+          </div>
+        </div>
+
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="ajustarCantidadTaquilla(${cat.id}, -1)">−</button>
+          <input
+            id="tkCantidad-${cat.id}"
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            data-categoria-id="${cat.id}"
+            data-precio="${cat.precio}"
+            class="tk-cantidad"
+            oninput="recalcularTaquilla()"
+          >
+          <button type="button" class="qty-btn" onclick="ajustarCantidadTaquilla(${cat.id}, 1)">+</button>
+        </div>
       </div>
-      <div class="cat-precio">${money(cat.precio)}</div>
-      <input
-        type="number"
-        min="0"
-        step="1"
-        value="0"
-        data-categoria-id="${cat.id}"
-        data-precio="${cat.precio}"
-        class="tk-cantidad"
-        oninput="recalcularTaquilla()"
-      >
-    </div>
-  `).join('');
+    `;
+  }).join('');
+}
+
+function ajustarCantidadTaquilla(categoriaId, cambio) {
+  const input = document.getElementById(`tkCantidad-${categoriaId}`);
+  if (!input) return;
+
+  const actual = Number(input.value || 0);
+  const nuevo = Math.max(0, actual + cambio);
+
+  input.value = nuevo;
+  recalcularTaquilla();
 }
 
 function recalcularTaquilla() {
@@ -443,6 +474,11 @@ function recalcularTaquilla() {
   inputs.forEach(input => {
     const cantidad = Number(input.value || 0);
     const precio = Number(input.dataset.precio || 0);
+    const card = input.closest('.categoria-card');
+
+    if (card) {
+      card.classList.toggle('selected', cantidad > 0);
+    }
 
     totalPersonas += cantidad;
     totalMonto += cantidad * precio;
@@ -450,6 +486,11 @@ function recalcularTaquilla() {
 
   document.getElementById('tkTotalPersonas').textContent = totalPersonas;
   document.getElementById('tkTotalMonto').textContent = money(totalMonto);
+
+  const btnVender = document.getElementById('btnTkVender');
+  if (btnVender) {
+    btnVender.disabled = totalPersonas <= 0;
+  }
 }
 
 function limpiarTaquilla() {
@@ -491,11 +532,14 @@ function obtenerDetallesTaquilla() {
 async function venderEnTaquilla() {
   clearMessage('msgTaquilla');
 
+  const btnVender = document.getElementById('btnTkVender');
+  const textoOriginal = btnVender.textContent;
+
   const nombre = document.getElementById('tkNombre').value.trim();
   const telefono = document.getElementById('tkTelefono').value.trim();
   const emailCapturado = document.getElementById('tkEmail').value.trim();
   const fecha = document.getElementById('tkFecha').value;
-const metodoPago = 'efectivo';
+  const metodoPago = 'efectivo';
 
   const detalles = obtenerDetallesTaquilla();
 
@@ -509,9 +553,12 @@ const metodoPago = 'efectivo';
     return;
   }
 
- const emailFinal = emailCapturado || '';
+  const emailFinal = emailCapturado || '';
 
   try {
+    btnVender.disabled = true;
+    btnVender.textContent = '⏳ Registrando venta...';
+
     const res = await fetch(`${API_BASE}/api/venta`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -542,67 +589,75 @@ const metodoPago = 'efectivo';
       email: emailFinal
     };
 
-const detalleTicketHtml = (data.detalles || []).map(d => `
-  <div class="ticket-row">
-    <span>${d.nombre} x${d.cantidad}</span>
-    <strong>${money(d.subtotal)}</strong>
-  </div>
-`).join('');
+    const detalleTicketHtml = (data.detalles || []).map(d => `
+      <div class="ticket-row">
+        <span>${d.nombre} x${d.cantidad}</span>
+        <strong>${money(d.subtotal)}</strong>
+      </div>
+    `).join('');
 
-document.getElementById('tkResumenVenta').innerHTML = `
-  <div class="ticket-preview">
-    <h4>🦁 Zoológico El Sabinal</h4>
-    <p><strong>Ticket de compra en taquilla</strong></p>
+    document.getElementById('tkResumenVenta').innerHTML = `
+      <div class="ticket-preview">
+        <h4>🦁 Zoológico El Sabinal</h4>
+        <p><strong>Ticket de compra en taquilla</strong></p>
 
-    <div class="ticket-row">
-      <span>Folio</span>
-      <strong>${data.venta.folio}</strong>
-    </div>
+        <div class="ticket-row">
+          <span>Folio</span>
+          <strong>${data.venta.folio}</strong>
+        </div>
 
-    <div class="ticket-row">
-      <span>Cliente</span>
-      <strong>${nombre || 'Cliente de taquilla'}</strong>
-    </div>
+        <div class="ticket-row">
+          <span>Cliente</span>
+          <strong>${nombre || 'Cliente de taquilla'}</strong>
+        </div>
 
-    <div class="ticket-row">
-      <span>Fecha de visita</span>
-      <strong>${data.venta.fecha_visita}</strong>
-    </div>
+        <div class="ticket-row">
+          <span>Fecha de visita</span>
+          <strong>${data.venta.fecha_visita}</strong>
+        </div>
 
-    <div class="ticket-row">
-      <span>Método de pago</span>
-      <strong>Efectivo</strong>
-    </div>
+        <div class="ticket-row">
+          <span>Método de pago</span>
+          <strong>Efectivo</strong>
+        </div>
 
-    <div class="ticket-row">
-      <span>Estado</span>
-      <strong>Pagado</strong>
-    </div>
+        <div class="ticket-row">
+          <span>Estado</span>
+          <strong>Pagado</strong>
+        </div>
 
-    <hr>
+        <hr>
 
-    ${detalleTicketHtml}
+        ${detalleTicketHtml}
 
-    <div class="ticket-total">
-      Total pagado: ${money(data.venta.total)}
-    </div>
+        <div class="ticket-total">
+          Total pagado: ${money(data.venta.total)}
+        </div>
 
-    <p style="margin-top:12px;color:#5f6b7a;">
-      Conserva este ticket como comprobante de compra.
-    </p>
-  </div>
-`;
+        <p style="margin-top:12px;color:#5f6b7a;">
+          Conserva este ticket como comprobante de compra.
+        </p>
+      </div>
+    `;
 
     document.getElementById('tkQrImg').src = data.venta.qr_url;
     document.getElementById('tkResultado').classList.add('show');
 
-    setMessage('msgTaquilla', '✅ Venta en taquilla generada correctamente.', 'ok');
+    setMessage('msgTaquilla', '✅ Venta registrada. Ticket listo para imprimir.', 'ok');
 
     await cargarDashboard();
     await cargarVentas();
     await cargarCorte();
+
+    setTimeout(() => {
+      imprimirVentaTaquilla();
+    }, 350);
+
   } catch (error) {
     setMessage('msgTaquilla', '❌ ' + error.message, 'error');
+  } finally {
+    btnVender.textContent = textoOriginal;
+    recalcularTaquilla();
   }
 }
 
