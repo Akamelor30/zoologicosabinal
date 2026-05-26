@@ -1174,26 +1174,53 @@ const estadoPagoFinal = canalVentaFinal === 'web'
         const ventaId = ventaResult.insertId;
 
         for (const d of detalles) {
-            await conn.query(`
-                INSERT INTO detalle_venta
-                (
-                    venta_id,
-                    categoria_id,
-                    cantidad,
-                    precio_unitario,
-                    subtotal
-                )
-                VALUES (?, ?, ?, ?, ?)
-            `, [
-                ventaId,
-                d.categoria_id,
-                d.cantidad,
-                d.precio_unitario,
-                d.subtotal
-            ]);
-        }
+    await conn.query(`
+        INSERT INTO detalle_venta
+        (
+            venta_id,
+            categoria_id,
+            cantidad,
+            precio_unitario,
+            subtotal
+        )
+        VALUES (?, ?, ?, ?, ?)
+    `, [
+        ventaId,
+        d.categoria_id,
+        d.cantidad,
+        d.precio_unitario,
+        d.subtotal
+    ]);
+}
 
-        await conn.commit();
+// Si la venta es en taquilla, el cliente ya pagó y ya puede entrar.
+// Por eso registramos automáticamente el acceso como aceptado.
+if (canalVentaFinal === 'taquilla') {
+    await registrarAcceso({
+        conn,
+        ventaId,
+        taquilleroId: taquillero_id,
+        dispositivo: 'Venta en taquilla',
+        resultado: 'aceptado',
+        ip: ipCompra,
+        observaciones: 'Acceso registrado automáticamente al cobrar en taquilla'
+    });
+
+    await conn.query(`
+        UPDATE ventas
+        SET qr_usado = 1,
+            estado_acceso = 'usado',
+            fecha_uso = NOW(),
+            observaciones = CONCAT(
+                IFNULL(observaciones, ''),
+                CASE WHEN IFNULL(observaciones, '') = '' THEN '' ELSE ' | ' END,
+                'Acceso otorgado automáticamente por venta en taquilla'
+            )
+        WHERE id = ?
+    `, [ventaId]);
+}
+
+await conn.commit();
 
         const qrPath = await generarYGuardarQR(folio);
         const qrUrl = crearUrlQR(req, folio);
@@ -1248,19 +1275,20 @@ const estadoPagoFinal = canalVentaFinal === 'web'
           message: canalVentaFinal === 'taquilla'
     ? '✅ Venta de taquilla registrada correctamente'
     : '✅ Reservación registrada correctamente. Presenta tu QR y paga en taquilla.',
-            venta: {
-                id: ventaId,
-                folio,
-                qr_token: qrToken,
-                qr_url: qrUrl,
-                email: emailFinal,
-                fecha_visita,
-                cantidad_personas: cantidadPersonas,
-                total,
-                estado_pago: estadoPagoFinal,
-                canal_venta: canalVentaFinal,
-                correo_enviado: correoEnviado
-            },
+           venta: {
+    id: ventaId,
+    folio,
+    qr_token: qrToken,
+    qr_url: qrUrl,
+    email: emailFinal,
+    fecha_visita,
+    cantidad_personas: cantidadPersonas,
+    total,
+    estado_pago: estadoPagoFinal,
+    estado_acceso: canalVentaFinal === 'taquilla' ? 'usado' : 'pendiente',
+    canal_venta: canalVentaFinal,
+    correo_enviado: correoEnviado
+},
             detalles,
             correo: correoInfo
         });
@@ -2324,14 +2352,15 @@ app.get('/api/estadisticas', async (req, res) => {
         `, [fecha]);
 
         const [pendientesRows] = await pool.query(`
-            SELECT 
-                COUNT(*) AS pendientes_hoy
-            FROM ventas
-            WHERE fecha_visita = ?
-              AND estado_acceso = 'pendiente'
-              AND estado_pago <> 'cancelado'
-              AND qr_usado = 0
-        `, [fecha]);
+    SELECT 
+        COUNT(*) AS pendientes_hoy
+    FROM ventas
+    WHERE fecha_visita = ?
+      AND canal_venta = 'web'
+      AND estado_acceso = 'pendiente'
+      AND estado_pago <> 'cancelado'
+      AND qr_usado = 0
+`, [fecha]);
 
         const [masVendidaRows] = await pool.query(`
             SELECT 
