@@ -590,3 +590,32 @@
                 flex-direction: column;
             }
         }
+ .promo-web-box {
+    margin-top: 20px;
+    background: linear-gradient(145deg, #fff3cd, #ffffff);
+    border: 2px solid #f9b81b;
+    border-left: 8px solid #bc6c25;
+    border-radius: 18px;
+    padding: 16px 18px;
+    color: #283618;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    text-align: left;
+}
+
+.promo-web-box strong {
+    display: block;
+    font-size: 1.15rem;
+    color: #bc6c25;
+    margin-bottom: 6px;
+}
+
+.promo-web-box span {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.promo-web-box small {
+    display: block;
+    color: #5f6b7a;
+}       

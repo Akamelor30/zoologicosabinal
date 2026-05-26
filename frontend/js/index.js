@@ -1,6 +1,7 @@
 
         const API_BASE = '';
         let categorias = [];
+        let promocionesWeb = [];
 
         function money(valor) {
             return '$' + Number(valor || 0).toFixed(2) + ' MXN';
@@ -98,6 +99,68 @@
             btn.parentElement.remove();
             calcularTotales();
         }
+        function nombreDiaPromoPublica(valor) {
+    const mapa = {
+        1: 'domingo',
+        2: 'lunes',
+        3: 'martes',
+        4: 'miércoles',
+        5: 'jueves',
+        6: 'viernes',
+        7: 'sábado'
+    };
+
+    return mapa[Number(valor)] || 'todos los días';
+}
+
+async function cargarPromocionesWeb() {
+    const fecha = document.getElementById('fecha_visita')?.value || new Date().toISOString().split('T')[0];
+
+    try {
+        const response = await fetch(`${API_BASE}/api/promociones-publicas?fecha=${encodeURIComponent(fecha)}`);
+        const data = await response.json();
+
+        promocionesWeb = data.success ? (data.promociones || []) : [];
+        renderPromoWeb();
+        calcularTotales();
+    } catch {
+        promocionesWeb = [];
+        renderPromoWeb();
+    }
+}
+
+function renderPromoWeb() {
+    const box = document.getElementById('promo-web-box');
+    if (!box) return;
+
+    if (!promocionesWeb.length) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    const promo = promocionesWeb[0];
+
+    box.style.display = 'block';
+    box.innerHTML = `
+        <strong>🎉 Promoción activa: ${promo.nombre}</strong>
+        <span>${promo.descripcion || '2x1 disponible solo en reservaciones web.'}</span>
+        <small>
+            Aplica ${promo.dia_semana ? 'los ' + nombreDiaPromoPublica(promo.dia_semana) : 'todos los días'}.
+            ${promo.categoria_nombre ? 'Categoría: ' + promo.categoria_nombre + '.' : 'Aplica a todas las categorías.'}
+        </small>
+    `;
+}
+
+function obtenerPromoActivaParaCategoria(categoriaId) {
+    if (!promocionesWeb.length) return null;
+
+    const promo = promocionesWeb[0];
+
+    if (!promo.categoria_id) return promo;
+
+    return Number(promo.categoria_id) === Number(categoriaId) ? promo : null;
+}
 
         function calcularTotales() {
             let total = 0;
@@ -108,10 +171,22 @@
                 const categoria = getCategoriaById(categoriaId);
 
                 const precio = categoria ? Number(categoria.precio) : 0;
-                const subtotal = precio * cantidad;
+               let subtotal = precio * cantidad;
+let descuento = 0;
 
-                item.querySelector('.subtotal').textContent = '$' + subtotal.toFixed(2);
-                total += subtotal;
+const promo = obtenerPromoActivaParaCategoria(categoriaId);
+
+if (promo && promo.tipo === '2x1') {
+    const gratis = Math.floor(cantidad / 2);
+    descuento = gratis * precio;
+    subtotal = subtotal - descuento;
+}
+
+item.querySelector('.subtotal').textContent = descuento > 0
+    ? `$${subtotal.toFixed(2)} promo`
+    : '$' + subtotal.toFixed(2);
+
+total += subtotal;
             });
 
             document.getElementById('total').innerHTML = `Total: $${total.toFixed(2)} MXN`;
@@ -420,10 +495,12 @@
             const fechaInput = document.getElementById('fecha_visita');
             fechaInput.min = hoy;
             fechaInput.value = hoy;
+            fechaInput.addEventListener('change', cargarPromocionesWeb);
 
             try {
                 await cargarCategorias();
                 calcularTotales();
+                await cargarPromocionesWeb();
             } catch (error) {
                 mostrarMensaje(`❌ ${error.message}`, 'error');
             }

@@ -22,6 +22,8 @@
         <button class="menu-btn" data-panel="buscar">🔎 Buscar por folio</button>
         <button class="menu-btn" data-panel="corte">💰 Corte básico</button>
         <button class="menu-btn" data-panel="bi">📈 BI y gráficas</button>
+        <button class="menu-btn" data-panel="bi">📈 BI y gráficas</button>
+<button class="menu-btn" data-panel="promociones">🎯 Promociones web</button>
        <a href="/lector.html">📷 Ir al lector QR</a>
 <a href="/">🛒 Ir a la venta pública</a>
 <a href="/panel-logout" class="logout-link">🚪 Cerrar sesión</a>
@@ -571,6 +573,103 @@
   </div>
 
   <div id="msgBI" class="message"></div>
+</section>
+<section class="panel" id="panel-promociones">
+  <div class="bi-hero">
+    <div>
+      <span class="module-kicker">Promociones</span>
+      <h3>🎯 Promociones web</h3>
+      <p>
+        Configura promociones para aumentar visitas en días de baja demanda.
+        Estas promociones aplican solo en reservaciones realizadas desde la página pública.
+      </p>
+    </div>
+
+    <div class="bi-status">
+      <small>Canal</small>
+      <strong>🌐 Solo web</strong>
+    </div>
+  </div>
+
+  <div class="taquilla-alert">
+    <strong>ℹ️ Regla:</strong> la promoción 2x1 se aplica únicamente a compras en línea.  
+    En taquilla se mantiene el cobro normal.
+  </div>
+
+  <div class="taquilla-layout pro">
+    <div class="taquilla-card venta-form-card">
+      <div class="section-title-row">
+        <div>
+          <h4>Nueva promoción</h4>
+          <p>Define fecha, día y categoría para aplicar el 2x1.</p>
+        </div>
+        <span class="pill-soft">2x1 web</span>
+      </div>
+
+      <div class="taquilla-grid">
+        <div class="field">
+          <label for="promoNombre">Nombre de la promoción</label>
+          <input type="text" id="promoNombre" placeholder="Ej. Martes 2x1 Web">
+        </div>
+
+        <div class="field">
+          <label for="promoCategoria">Categoría</label>
+          <select id="promoCategoria">
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="promoDia">Día de aplicación</label>
+          <select id="promoDia">
+            <option value="">Todos los días</option>
+            <option value="1">Domingo</option>
+            <option value="2">Lunes</option>
+            <option value="3">Martes</option>
+            <option value="4">Miércoles</option>
+            <option value="5">Jueves</option>
+            <option value="6">Viernes</option>
+            <option value="7">Sábado</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="promoInicio">Fecha inicial</label>
+          <input type="date" id="promoInicio">
+        </div>
+
+        <div class="field">
+          <label for="promoFin">Fecha final</label>
+          <input type="date" id="promoFin">
+        </div>
+
+        <div class="field">
+          <label for="promoDescripcion">Descripción</label>
+          <input type="text" id="promoDescripcion" placeholder="Ej. Promoción para impulsar visitas entre semana">
+        </div>
+      </div>
+
+      <div class="taquilla-actions">
+        <button class="btn btn-primary" id="btnGuardarPromo">Guardar promoción</button>
+        <button class="btn btn-outline" id="btnLimpiarPromo">Limpiar</button>
+      </div>
+
+      <div id="msgPromos" class="message"></div>
+    </div>
+
+    <div class="taquilla-card boletos-card">
+      <div class="section-title-row">
+        <div>
+          <h4>Promociones registradas</h4>
+          <p>Activa o desactiva promociones sin borrar información.</p>
+        </div>
+      </div>
+
+      <div id="listaPromociones" class="promos-list">
+        Cargando promociones...
+      </div>
+    </div>
+  </div>
 </section>
     </main>
   </div>

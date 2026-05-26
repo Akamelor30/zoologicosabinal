@@ -1253,3 +1253,65 @@
     page-break-inside: avoid;
   }
 }
+/* ===== PROMOCIONES WEB ===== */
+
+.promos-list {
+  display: grid;
+  gap: 12px;
+}
+
+.promo-card {
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+  border: 2px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.promo-card.activa {
+  border-color: #2d6a4f;
+  background: linear-gradient(145deg, #eef7f0, #ffffff);
+}
+
+.promo-card.inactiva {
+  opacity: 0.72;
+}
+
+.promo-card h4 {
+  margin: 0 0 6px;
+  color: #283618;
+}
+
+.promo-card p {
+  margin: 3px 0;
+  color: #5f6b7a;
+  font-size: 0.9rem;
+}
+
+.promo-badge {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin-right: 6px;
+}
+
+.promo-badge.ok {
+  background: #d4edda;
+  color: #155724;
+}
+
+.promo-badge.warn {
+  background: #fff3cd;
+  color: #856404;
+}
+
+@media (max-width: 700px) {
+  .promo-card {
+    grid-template-columns: 1fr;
+  }
+}

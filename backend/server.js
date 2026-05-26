@@ -645,6 +645,81 @@ async function normalizarDetallesEntrada(conn, body) {
 
     return Array.from(agrupados.values());
 }
+function obtenerDiaSemanaMySQL(fechaISO) {
+    const fecha = new Date(`${String(fechaISO).slice(0, 10)}T12:00:00`);
+    return fecha.getDay() + 1; // JS: 0 domingo, MySQL: 1 domingo
+}
+
+async function obtenerPromocionWebActiva(conn, fechaVisita, detalles) {
+    const diaSemana = obtenerDiaSemanaMySQL(fechaVisita);
+    const categoriaIds = detalles.map(d => Number(d.categoria_id));
+
+    const [rows] = await conn.query(`
+        SELECT 
+            p.*,
+            c.nombre AS categoria_nombre
+        FROM promociones p
+        LEFT JOIN categorias c ON c.id = p.categoria_id
+        WHERE p.activo = 1
+          AND p.tipo = '2x1'
+          AND p.canal IN ('web', 'ambos')
+          AND p.fecha_inicio <= ?
+          AND p.fecha_fin >= ?
+          AND (p.dia_semana IS NULL OR p.dia_semana = ?)
+        ORDER BY p.fecha_creacion DESC
+        LIMIT 10
+    `, [fechaVisita, fechaVisita, diaSemana]);
+
+    for (const promo of rows) {
+        if (!promo.categoria_id) return promo;
+
+        if (categoriaIds.includes(Number(promo.categoria_id))) {
+            return promo;
+        }
+    }
+
+    return null;
+}
+
+function aplicarPromocion2x1(detalles, promocion) {
+    if (!promocion || promocion.tipo !== '2x1') {
+        return {
+            detalles,
+            descuento_total: 0,
+            promocion_aplicada: null
+        };
+    }
+
+    let descuentoTotal = 0;
+
+    const detallesConPromo = detalles.map(d => {
+        const aplicaCategoria = !promocion.categoria_id || Number(promocion.categoria_id) === Number(d.categoria_id);
+
+        if (!aplicaCategoria) {
+            return {
+                ...d,
+                descuento: 0
+            };
+        }
+
+        const cantidadGratis = Math.floor(Number(d.cantidad || 0) / 2);
+        const descuento = Number((cantidadGratis * Number(d.precio_unitario || 0)).toFixed(2));
+
+        descuentoTotal += descuento;
+
+        return {
+            ...d,
+            descuento,
+            subtotal: Number((Number(d.subtotal || 0) - descuento).toFixed(2))
+        };
+    });
+
+    return {
+        detalles: detallesConPromo,
+        descuento_total: Number(descuentoTotal.toFixed(2)),
+        promocion_aplicada: descuentoTotal > 0 ? promocion : null
+    };
+}
 
 async function obtenerVentaCompletaPorFiltro(filtro, valor) {
     const conn = await pool.getConnection();
@@ -964,6 +1039,7 @@ app.use('/api/corte-basico', requirePanelAuth);
 app.use('/api/estadisticas', requirePanelAuth);
 app.use('/api/bi-dashboard', requirePanelAuth);
 app.use('/api/test-email', requirePanelAuth);
+app.use('/api/promociones', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
 app.use(/^\/api\/ventas\/[^/]+\/confirmar-pago$/, requirePanelAuth);
@@ -1055,6 +1131,184 @@ app.get('/api/categorias', async (req, res) => {
         });
     }
 });
+// ============================================
+// 🎯 PROMOCIONES ADMIN
+// ============================================
+app.get('/api/promociones', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT 
+                p.*,
+                c.nombre AS categoria_nombre
+            FROM promociones p
+            LEFT JOIN categorias c ON c.id = p.categoria_id
+            ORDER BY p.fecha_creacion DESC
+        `);
+
+        res.json({
+            success: true,
+            promociones: rows
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo promociones',
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/promociones', async (req, res) => {
+    try {
+        const {
+            nombre,
+            descripcion = '',
+            tipo = '2x1',
+            canal = 'web',
+            categoria_id = null,
+            dia_semana = null,
+            fecha_inicio,
+            fecha_fin,
+            activo = 1
+        } = req.body || {};
+
+        if (!nombre || !fecha_inicio || !fecha_fin) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre, fecha inicial y fecha final son obligatorios'
+            });
+        }
+
+        if (fecha_inicio > fecha_fin) {
+            return res.status(400).json({
+                success: false,
+                message: 'La fecha inicial no puede ser mayor que la fecha final'
+            });
+        }
+
+        const [result] = await pool.query(`
+            INSERT INTO promociones
+            (
+                nombre,
+                descripcion,
+                tipo,
+                canal,
+                categoria_id,
+                dia_semana,
+                fecha_inicio,
+                fecha_fin,
+                activo
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            nombre,
+            descripcion || null,
+            tipo,
+            canal,
+            categoria_id ? Number(categoria_id) : null,
+            dia_semana ? Number(dia_semana) : null,
+            fecha_inicio,
+            fecha_fin,
+            Number(activo) ? 1 : 0
+        ]);
+
+        res.json({
+            success: true,
+            message: '✅ Promoción guardada correctamente',
+            id: result.insertId
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error guardando promoción',
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/promociones/:id/toggle', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        const [rows] = await pool.query(`
+            SELECT activo
+            FROM promociones
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!rows.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Promoción no encontrada'
+            });
+        }
+
+        const nuevoEstado = Number(rows[0].activo) === 1 ? 0 : 1;
+
+        await pool.query(`
+            UPDATE promociones
+            SET activo = ?
+            WHERE id = ?
+        `, [nuevoEstado, id]);
+
+        res.json({
+            success: true,
+            message: nuevoEstado ? '✅ Promoción activada' : '✅ Promoción desactivada',
+            activo: nuevoEstado
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error cambiando estado de promoción',
+            error: error.message
+        });
+    }
+});
+
+// ============================================
+// 🎯 PROMOCIONES PÚBLICAS WEB
+// ============================================
+app.get('/api/promociones-publicas', async (req, res) => {
+    try {
+        const fecha = String(req.query.fecha || fechaHoyISO()).slice(0, 10);
+        const diaSemana = obtenerDiaSemanaMySQL(fecha);
+
+        const [rows] = await pool.query(`
+            SELECT 
+                p.id,
+                p.nombre,
+                p.descripcion,
+                p.tipo,
+                p.canal,
+                p.categoria_id,
+                p.dia_semana,
+                p.fecha_inicio,
+                p.fecha_fin,
+                c.nombre AS categoria_nombre
+            FROM promociones p
+            LEFT JOIN categorias c ON c.id = p.categoria_id
+            WHERE p.activo = 1
+              AND p.canal IN ('web', 'ambos')
+              AND p.fecha_inicio <= ?
+              AND p.fecha_fin >= ?
+              AND (p.dia_semana IS NULL OR p.dia_semana = ?)
+            ORDER BY p.fecha_creacion DESC
+        `, [fecha, fecha, diaSemana]);
+
+        res.json({
+            success: true,
+            fecha,
+            promociones: rows
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo promociones públicas',
+            error: error.message
+        });
+    }
+});
 
 // ============================================
 // 🎟️ CREAR VENTA
@@ -1109,13 +1363,29 @@ app.post('/api/venta', async (req, res) => {
             });
         }
 
-        const detalles = await normalizarDetallesEntrada(conn, req.body);
+       let detalles = await normalizarDetallesEntrada(conn, req.body);
 
-        const cantidadPersonas = detalles.reduce((acc, d) => acc + Number(d.cantidad), 0);
-        const total = Number(detalles.reduce((acc, d) => acc + Number(d.subtotal), 0).toFixed(2));
+const cantidadPersonas = detalles.reduce((acc, d) => acc + Number(d.cantidad), 0);
+const subtotalSinDescuento = Number(detalles.reduce((acc, d) => acc + Number(d.subtotal), 0).toFixed(2));
 
-        const folio = generarFolio();
-        const qrToken = generarQrToken();
+let descuentoTotal = 0;
+let promocionAplicada = null;
+
+if (canalVentaFinal === 'web') {
+    const promoActiva = await obtenerPromocionWebActiva(conn, fecha_visita, detalles);
+
+    if (promoActiva) {
+        const resultadoPromo = aplicarPromocion2x1(detalles, promoActiva);
+        detalles = resultadoPromo.detalles;
+        descuentoTotal = resultadoPromo.descuento_total;
+        promocionAplicada = resultadoPromo.promocion_aplicada;
+    }
+}
+
+const total = Number(detalles.reduce((acc, d) => acc + Number(d.subtotal), 0).toFixed(2));
+
+const folio = generarFolio();
+const qrToken = generarQrToken();
 
 const metodoPagoFinal = 'efectivo';
 
@@ -1133,13 +1403,16 @@ const estadoPagoFinal = canalVentaFinal === 'web'
                 qr_token,
                 usuario_id,
                 taquillero_id,
-                corte_id,
-                nombre_cliente,
+               corte_id,
+               promocion_id,
+               nombre_cliente,
                 email,
                 telefono,
                 fecha_visita,
                 cantidad_personas,
-                total,
+subtotal_sin_descuento,
+descuento_total,
+total,
                 metodo_pago,
                 referencia_pago,
                 estado_pago,
@@ -1150,20 +1423,23 @@ const estadoPagoFinal = canalVentaFinal === 'web'
                 observaciones,
                 fecha_venta
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', 0, ?, ?, ?, NOW())
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', 0, ?, ?, ?, NOW())
         `, [
             folio,
             qrToken,
             usuario_id,
             taquillero_id,
             corte_id,
-            nombre_cliente,
-            emailFinal,
+promocionAplicada ? promocionAplicada.id : null,
+nombre_cliente,
+emailFinal,
             telefono,
             fecha_visita,
-            cantidadPersonas,
-            total,
-            metodoPagoFinal,
+           cantidadPersonas,
+subtotalSinDescuento,
+descuentoTotal,
+total,
+metodoPagoFinal,
             referencia_pago,
             estadoPagoFinal,
             canalVentaFinal,
@@ -1270,28 +1546,39 @@ await conn.commit();
     };
 }
 
-        res.json({
-            success: true,
-          message: canalVentaFinal === 'taquilla'
-    ? '✅ Venta de taquilla registrada correctamente'
-    : '✅ Reservación registrada correctamente. Presenta tu QR y paga en taquilla.',
-           venta: {
-    id: ventaId,
-    folio,
-    qr_token: qrToken,
-    qr_url: qrUrl,
-    email: emailFinal,
-    fecha_visita,
-    cantidad_personas: cantidadPersonas,
-    total,
-    estado_pago: estadoPagoFinal,
-    estado_acceso: canalVentaFinal === 'taquilla' ? 'usado' : 'pendiente',
-    canal_venta: canalVentaFinal,
-    correo_enviado: correoEnviado
-},
-            detalles,
-            correo: correoInfo
-        });
+   res.json({
+    success: true,
+    message: canalVentaFinal === 'taquilla'
+        ? '✅ Venta de taquilla registrada correctamente'
+        : '✅ Reservación registrada correctamente. Presenta tu QR y paga en taquilla.',
+    venta: {
+        id: ventaId,
+        folio,
+        qr_token: qrToken,
+        qr_url: qrUrl,
+        email: emailFinal,
+        fecha_visita,
+        cantidad_personas: cantidadPersonas,
+
+        subtotal_sin_descuento: subtotalSinDescuento,
+        descuento_total: descuentoTotal,
+        total,
+
+        promocion_aplicada: promocionAplicada ? {
+            id: promocionAplicada.id,
+            nombre: promocionAplicada.nombre,
+            descripcion: promocionAplicada.descripcion,
+            tipo: promocionAplicada.tipo
+        } : null,
+
+        estado_pago: estadoPagoFinal,
+        estado_acceso: canalVentaFinal === 'taquilla' ? 'usado' : 'pendiente',
+        canal_venta: canalVentaFinal,
+        correo_enviado: correoEnviado
+    },
+    detalles,
+    correo: correoInfo
+});
     } catch (error) {
         try { await conn.rollback(); } catch {}
         res.status(500).json({

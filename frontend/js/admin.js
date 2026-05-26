@@ -462,6 +462,153 @@ async function cargarCategoriasTaquilla() {
     setMessage('msgTaquilla', '❌ ' + error.message, 'error');
   }
 }
+function nombreDiaPromo(valor) {
+  const mapa = {
+    1: 'Domingo',
+    2: 'Lunes',
+    3: 'Martes',
+    4: 'Miércoles',
+    5: 'Jueves',
+    6: 'Viernes',
+    7: 'Sábado'
+  };
+
+  return mapa[Number(valor)] || 'Todos los días';
+}
+
+async function cargarPromociones() {
+  const lista = document.getElementById('listaPromociones');
+  if (!lista) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/promociones`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudieron cargar promociones');
+    }
+
+    if (!data.promociones.length) {
+      lista.innerHTML = '<div class="tiny-note">Aún no hay promociones registradas.</div>';
+      return;
+    }
+
+    lista.innerHTML = data.promociones.map(p => `
+      <div class="promo-card ${Number(p.activo) === 1 ? 'activa' : 'inactiva'}">
+        <div>
+          <h4>${p.nombre}</h4>
+          <p>${p.descripcion || 'Sin descripción'}</p>
+          <p>
+            <span class="promo-badge ok">${p.tipo}</span>
+            <span class="promo-badge warn">${p.canal === 'web' ? 'Solo web' : p.canal}</span>
+          </p>
+          <p><strong>Vigencia:</strong> ${String(p.fecha_inicio).slice(0,10)} al ${String(p.fecha_fin).slice(0,10)}</p>
+          <p><strong>Día:</strong> ${nombreDiaPromo(p.dia_semana)}</p>
+          <p><strong>Categoría:</strong> ${p.categoria_nombre || 'Todas'}</p>
+          <p><strong>Estado:</strong> ${Number(p.activo) === 1 ? 'Activa ✅' : 'Inactiva ⏸️'}</p>
+        </div>
+
+        <div>
+          <button class="btn ${Number(p.activo) === 1 ? 'btn-danger' : 'btn-primary'}" onclick="togglePromocion(${p.id})">
+            ${Number(p.activo) === 1 ? 'Desactivar' : 'Activar'}
+          </button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    lista.innerHTML = 'Error cargando promociones.';
+    setMessage('msgPromos', '❌ ' + error.message, 'error');
+  }
+}
+
+function limpiarFormularioPromo() {
+  document.getElementById('promoNombre').value = '';
+  document.getElementById('promoCategoria').value = '';
+  document.getElementById('promoDia').value = '';
+  document.getElementById('promoDescripcion').value = '';
+
+  const hoy = todayISO();
+  document.getElementById('promoInicio').value = hoy;
+  document.getElementById('promoFin').value = hoy;
+
+  clearMessage('msgPromos');
+}
+
+async function guardarPromocion() {
+  clearMessage('msgPromos');
+
+  const nombre = document.getElementById('promoNombre').value.trim();
+  const categoria_id = document.getElementById('promoCategoria').value || null;
+  const dia_semana = document.getElementById('promoDia').value || null;
+  const fecha_inicio = document.getElementById('promoInicio').value;
+  const fecha_fin = document.getElementById('promoFin').value;
+  const descripcion = document.getElementById('promoDescripcion').value.trim();
+
+  if (!nombre || !fecha_inicio || !fecha_fin) {
+    setMessage('msgPromos', '❌ Completa nombre, fecha inicial y fecha final.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/promociones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre,
+        descripcion,
+        tipo: '2x1',
+        canal: 'web',
+        categoria_id,
+        dia_semana,
+        fecha_inicio,
+        fecha_fin,
+        activo: 1
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo guardar la promoción');
+    }
+
+    setMessage('msgPromos', '✅ Promoción guardada correctamente.', 'ok');
+    limpiarFormularioPromo();
+    await cargarPromociones();
+  } catch (error) {
+    setMessage('msgPromos', '❌ ' + error.message, 'error');
+  }
+}
+
+async function togglePromocion(id) {
+  try {
+    const res = await fetch(`${API_BASE}/api/promociones/${id}/toggle`, {
+      method: 'POST'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo cambiar el estado');
+    }
+
+    await cargarPromociones();
+  } catch (error) {
+    setMessage('msgPromos', '❌ ' + error.message, 'error');
+  }
+}
+
+function cargarCategoriasPromos() {
+  const select = document.getElementById('promoCategoria');
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">Todas las categorías</option>
+    ${(categoriasTaquilla || []).map(cat => `
+      <option value="${cat.id}">${cat.nombre}</option>
+    `).join('')}
+  `;
+}
 
 function renderCategoriasTaquilla() {
   const wrap = document.getElementById('tkCategoriasWrap');
@@ -1561,6 +1708,8 @@ document.getElementById('btnDescargarQRDetalle').addEventListener('click', desca
 document.getElementById('btnReimprimirDetalle').addEventListener('click', reimprimirDetalle);
 document.getElementById('btnConfirmarPago').addEventListener('click', confirmarPagoActual);
 document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVentaActual);
+document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPromocion);
+document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
 document.getElementById('btnRegistrarEntrada').addEventListener('click', registrarEntradaManualActual);
 
  document.addEventListener('DOMContentLoaded', async () => {
@@ -1575,7 +1724,12 @@ document.getElementById('fechaInicioBI').value = addDaysISO(hoy, -30);
 document.getElementById('fechaFinBI').value = hoy;
 document.getElementById('tkFecha').value = hoy;
 
-  await cargarCategoriasTaquilla();
+await cargarCategoriasTaquilla();
+
+cargarCategoriasPromos();
+limpiarFormularioPromo();
+await cargarPromociones();
+
 await cargarDashboard();
 await cargarVentas();
 await cargarAccesos();
