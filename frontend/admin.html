@@ -391,33 +391,49 @@
         </div>
 
         <div id="msgCorte" class="message"></div>
-      </section>
-      <section class="panel" id="panel-bi">
-  <h3>📈 Inteligencia de negocios y graficación</h3>
+<section class="panel" id="panel-bi">
+  <div class="bi-hero">
+    <div>
+      <span class="module-kicker">Inteligencia de negocios</span>
+      <h3>📈 BI y gráficas del Zoológico El Sabinal</h3>
+      <p>
+        Analiza reservaciones web, ventas en taquilla, categorías más solicitadas,
+        ingresos, días con mayor demanda y recomendaciones para mejorar la operación.
+      </p>
+    </div>
+
+    <div class="bi-status">
+      <small>Modo de análisis</small>
+      <strong>📊 Operativo</strong>
+    </div>
+  </div>
 
   <div class="bi-header">
     <strong>Objetivo:</strong>
-    analizar reservaciones en línea, ventas en taquilla, categorías más solicitadas, días con mayor demanda e ingresos estimados/cobrados para apoyar la toma de decisiones del zoológico.
+    convertir los datos de ventas, reservaciones y accesos en información útil para la toma de decisiones del zoológico.
   </div>
 
-  <div class="filters">
+  <div class="bi-filters-pro">
     <div class="field">
-      <label for="fechaBI">Fecha de análisis</label>
-      <input type="date" id="fechaBI">
+      <label for="fechaInicioBI">Fecha inicial</label>
+      <input type="date" id="fechaInicioBI">
     </div>
 
     <div class="field">
-      <label for="rangoBI">Rango histórico</label>
-      <select id="rangoBI">
-        <option value="7">Últimos 7 días</option>
-        <option value="15">Últimos 15 días</option>
-        <option value="30" selected>Últimos 30 días</option>
-        <option value="60">Últimos 60 días</option>
-      </select>
+      <label for="fechaFinBI">Fecha final</label>
+      <input type="date" id="fechaFinBI">
     </div>
 
-    <button class="btn btn-primary" id="btnBI">Actualizar BI</button>
+    <button class="btn btn-primary" id="btnBI">Analizar periodo</button>
     <button class="btn btn-secondary" id="btnBIHoy">Hoy</button>
+    <button class="btn btn-secondary" id="btnBIMes">Este mes</button>
+    <button class="btn btn-secondary" id="btnBI30">Últimos 30 días</button>
+  </div>
+
+  <div class="bi-actions">
+    <button class="btn btn-outline" id="btnBIDescargarGraficas">Descargar gráficas PNG</button>
+    <button class="btn btn-outline" id="btnBIImprimir">Imprimir / guardar PDF</button>
+    <button class="btn btn-outline" id="btnExportarBICSV">Exportar datos CSV</button>
   </div>
 
   <div class="cards">
@@ -489,7 +505,24 @@
     </div>
   </div>
 
-  <div class="chart-grid">
+  <div class="insights-grid">
+    <div class="insight-card decision">
+      <h4>🎯 Promoción sugerida</h4>
+      <p id="insightPromocion">Sin datos suficientes para sugerir promoción.</p>
+    </div>
+
+    <div class="insight-card decision">
+      <h4>🧾 Canal recomendado</h4>
+      <p id="insightCanal">Sin datos suficientes para recomendar canal.</p>
+    </div>
+
+    <div class="insight-card decision">
+      <h4>🔮 Pronóstico mensual</h4>
+      <p id="insightPronostico">Sin datos suficientes para pronosticar.</p>
+    </div>
+  </div>
+
+  <div class="chart-grid bi-chart-grid">
     <div class="chart-card">
       <h4>🎟️ Boletos por categoría</h4>
       <canvas id="chartCategorias"></canvas>
@@ -506,13 +539,32 @@
     </div>
 
     <div class="chart-card">
-      <h4>📅 Días de la semana con mayor demanda</h4>
+      <h4>💰 Ingresos estimados vs cobrados</h4>
+      <canvas id="chartIngresos"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h4>📅 Días con mayor demanda</h4>
       <canvas id="chartDiasSemana"></canvas>
     </div>
 
+    <div class="chart-card">
+      <h4>📉 Días con menor demanda</h4>
+      <canvas id="chartDiasBajos"></canvas>
+    </div>
+
     <div class="chart-card large">
-      <h4>📊 Tendencia de visitantes esperados por fecha</h4>
+      <h4>📊 Tendencia real de visitantes por fecha</h4>
       <canvas id="chartTendencia"></canvas>
+    </div>
+
+    <div class="chart-card large">
+      <h4>🔮 Pronóstico aproximado de visitantes por mes</h4>
+      <p class="chart-help">
+        Estimación basada en el promedio de visitantes registrados y temporadas típicas en México:
+        verano, regreso a clases, puentes y vacaciones decembrinas.
+      </p>
+      <canvas id="chartPronostico"></canvas>
     </div>
   </div>
 
