@@ -9,6 +9,11 @@ let chartEstados = null;
 let chartCanales = null;
 let chartDiasSemana = null;
 let chartTendencia = null;
+let chartIngresos = null;
+let chartDiasBajos = null;
+let chartPronostico = null;
+
+let ultimoBI = null;
 function mostrarUsuarioPanel(username) {
   const box = document.getElementById('panelUsername');
   if (box) {
@@ -17,6 +22,28 @@ function mostrarUsuarioPanel(username) {
 }
 function todayISO() {
   return new Date().toISOString().split('T')[0];
+}
+function addDaysISO(fechaISO, dias) {
+  const fecha = new Date(`${fechaISO}T00:00:00`);
+  fecha.setDate(fecha.getDate() + dias);
+  return fecha.toISOString().split('T')[0];
+}
+
+function firstDayOfCurrentMonthISO() {
+  const hoy = new Date();
+  const y = hoy.getFullYear();
+  const m = String(hoy.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}-01`;
+}
+
+function nombreArchivoSeguro(texto) {
+  return String(texto || 'archivo')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function money(value) {
@@ -65,6 +92,46 @@ function crearGrafica(ctxId, tipo, labels, data, label, extraOptions = {}) {
               }
             }
           },
+      ...extraOptions
+    }
+  });
+}
+function crearGraficaMultiple(ctxId, tipo, labels, datasets, extraOptions = {}) {
+  const ctx = document.getElementById(ctxId);
+  if (!ctx) return null;
+
+  return new Chart(ctx, {
+    type: tipo,
+    data: {
+      labels,
+      datasets: datasets.map(ds => ({
+        ...ds,
+        borderWidth: 2,
+        borderRadius: tipo === 'bar' ? 8 : 0,
+        tension: tipo === 'line' ? 0.35 : undefined,
+        fill: false
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        }
+      },
       ...extraOptions
     }
   });
@@ -1036,13 +1103,18 @@ btnRegistrarEntrada.style.display = (!cancelada && pagoPagado && accesoPendiente
 async function cargarBI() {
   clearMessage('msgBI');
 
-  const fecha = document.getElementById('fechaBI').value || todayISO();
-  const dias = document.getElementById('rangoBI').value || '30';
+  const fechaInicio = document.getElementById('fechaInicioBI').value || addDaysISO(todayISO(), -30);
+  const fechaFin = document.getElementById('fechaFinBI').value || todayISO();
+
+  if (fechaInicio > fechaFin) {
+    setMessage('msgBI', '❌ La fecha inicial no puede ser mayor que la fecha final.', 'error');
+    return;
+  }
 
   try {
     const params = new URLSearchParams();
-    params.set('fecha', fecha);
-    params.set('dias', dias);
+    params.set('fecha_inicio', fechaInicio);
+    params.set('fecha_fin', fechaFin);
 
     const res = await fetch(`${API_BASE}/api/bi-dashboard?${params.toString()}`);
     const data = await res.json();
@@ -1050,6 +1122,8 @@ async function cargarBI() {
     if (!res.ok || !data.success) {
       throw new Error(data.message || 'No se pudo cargar BI');
     }
+
+    ultimoBI = data;
 
     const resumen = data.resumen || {};
 
@@ -1067,24 +1141,33 @@ async function cargarBI() {
     document.getElementById('insightDia').textContent = data.insights?.mensaje_dia || 'Sin datos por ahora.';
     document.getElementById('insightPago').textContent = data.insights?.mensaje_pago || 'Sin datos por ahora.';
 
+    document.getElementById('insightPromocion').textContent = data.insights?.mensaje_promocion || 'Sin datos suficientes para sugerir promoción.';
+    document.getElementById('insightCanal').textContent = data.insights?.mensaje_canal || 'Sin datos suficientes para recomendar canal.';
+    document.getElementById('insightPronostico').textContent = data.insights?.mensaje_pronostico || 'Sin datos suficientes para pronosticar.';
+
     const categorias = data.categorias || [];
     const estados = data.estados || [];
     const canales = data.canales || [];
     const diasSemana = data.dias_semana || [];
+    const diasBajos = data.dias_bajos || [];
     const tendencia = data.tendencia_dias || [];
+    const pronostico = data.pronostico_mensual || [];
 
     chartCategorias = destruirChart(chartCategorias);
     chartEstados = destruirChart(chartEstados);
     chartCanales = destruirChart(chartCanales);
     chartDiasSemana = destruirChart(chartDiasSemana);
     chartTendencia = destruirChart(chartTendencia);
+    chartIngresos = destruirChart(chartIngresos);
+    chartDiasBajos = destruirChart(chartDiasBajos);
+    chartPronostico = destruirChart(chartPronostico);
 
     chartCategorias = crearGrafica(
       'chartCategorias',
       'bar',
       categorias.map(c => c.nombre),
       categorias.map(c => c.cantidad),
-      'Boletos reservados/vendidos'
+      'Boletos vendidos/reservados'
     );
 
     chartEstados = crearGrafica(
@@ -1097,10 +1180,36 @@ async function cargarBI() {
 
     chartCanales = crearGrafica(
       'chartCanales',
-      'pie',
+      'doughnut',
       canales.map(c => c.canal_venta === 'web' ? 'Reservación web' : 'Venta taquilla'),
       canales.map(c => c.total),
-      'Canal'
+      'Canal de venta'
+    );
+
+    chartIngresos = crearGraficaMultiple(
+      'chartIngresos',
+      'line',
+      tendencia.map(t => t.fecha_visita),
+      [
+        {
+          label: 'Ingresos estimados',
+          data: tendencia.map(t => t.ingresos_estimados)
+        },
+        {
+          label: 'Ingresos cobrados',
+          data: tendencia.map(t => t.ingresos_cobrados)
+        }
+      ],
+      {
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: value => '$' + value
+            }
+          }
+        }
+      }
     );
 
     chartDiasSemana = crearGrafica(
@@ -1111,25 +1220,113 @@ async function cargarBI() {
       'Visitantes esperados'
     );
 
+    chartDiasBajos = crearGrafica(
+      'chartDiasBajos',
+      'bar',
+      diasBajos.map(d => d.dia_nombre),
+      diasBajos.map(d => d.personas),
+      'Visitantes en días bajos'
+    );
+
     chartTendencia = crearGrafica(
       'chartTendencia',
       'line',
       tendencia.map(t => t.fecha_visita),
       tendencia.map(t => t.personas),
-      'Visitantes esperados',
+      'Visitantes reales',
       {
         tension: 0.35
       }
     );
 
+    chartPronostico = crearGrafica(
+      'chartPronostico',
+      'bar',
+      pronostico.map(p => p.mes_nombre),
+      pronostico.map(p => p.visitantes_estimados),
+      'Visitantes estimados'
+    );
+
     if (!categorias.length && !tendencia.length) {
-      setMessage('msgBI', '⚠️ No hay datos suficientes para graficar en esta fecha o rango.', 'error');
+      setMessage('msgBI', '⚠️ No hay datos suficientes para graficar en este periodo.', 'error');
     } else {
       setMessage('msgBI', '✅ BI actualizado correctamente.', 'ok');
     }
   } catch (error) {
     setMessage('msgBI', '❌ ' + error.message, 'error');
   }
+}
+function descargarGraficaCanvas(canvasId, nombreArchivo) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const enlace = document.createElement('a');
+  enlace.href = canvas.toDataURL('image/png', 1.0);
+  enlace.download = nombreArchivo;
+  enlace.click();
+}
+
+function descargarGraficasBI() {
+  const inicio = document.getElementById('fechaInicioBI').value || 'inicio';
+  const fin = document.getElementById('fechaFinBI').value || 'fin';
+  const sufijo = nombreArchivoSeguro(`${inicio}_${fin}`);
+
+  const graficas = [
+    ['chartCategorias', `bi-categorias-${sufijo}.png`],
+    ['chartEstados', `bi-estados-pago-${sufijo}.png`],
+    ['chartCanales', `bi-canales-${sufijo}.png`],
+    ['chartIngresos', `bi-ingresos-${sufijo}.png`],
+    ['chartDiasSemana', `bi-dias-demanda-${sufijo}.png`],
+    ['chartDiasBajos', `bi-dias-bajos-${sufijo}.png`],
+    ['chartTendencia', `bi-tendencia-${sufijo}.png`],
+    ['chartPronostico', `bi-pronostico-${sufijo}.png`]
+  ];
+
+  graficas.forEach(([id, nombre], index) => {
+    setTimeout(() => descargarGraficaCanvas(id, nombre), index * 250);
+  });
+}
+
+function imprimirReporteBI() {
+  window.print();
+}
+
+function exportarBICSV() {
+  if (!ultimoBI) {
+    setMessage('msgBI', '❌ Primero actualiza el BI.', 'error');
+    return;
+  }
+
+  const tendencia = ultimoBI.tendencia_dias || [];
+  const pronostico = ultimoBI.pronostico_mensual || [];
+
+  const filas = [
+    ...tendencia.map(t => ({
+      tipo: 'real',
+      fecha_o_mes: t.fecha_visita,
+      personas: t.personas,
+      ingresos_estimados: t.ingresos_estimados,
+      ingresos_cobrados: t.ingresos_cobrados
+    })),
+    ...pronostico.map(p => ({
+      tipo: 'pronostico',
+      fecha_o_mes: p.mes_nombre,
+      personas: p.visitantes_estimados,
+      ingresos_estimados: '',
+      ingresos_cobrados: '',
+      motivo: p.motivo
+    }))
+  ];
+
+  if (!filas.length) {
+    setMessage('msgBI', '⚠️ No hay datos para exportar.', 'error');
+    return;
+  }
+
+  const inicio = document.getElementById('fechaInicioBI').value || 'inicio';
+  const fin = document.getElementById('fechaFinBI').value || 'fin';
+
+  descargarCSV(`bi-reporte-${inicio}-${fin}.csv`, filas);
 }
     async function cargarCorte() {
       clearMessage('msgCorte');
@@ -1331,14 +1528,31 @@ document.getElementById('btnTkVerDetalle').addEventListener('click', verDetalleT
       cargarCorte();
     });
     document.getElementById('btnExportarCorte').addEventListener('click', exportarCorteCSV);
-    document.getElementById('btnBI').addEventListener('click', cargarBI);
+  document.getElementById('btnBI').addEventListener('click', cargarBI);
 
 document.getElementById('btnBIHoy').addEventListener('click', () => {
-  document.getElementById('fechaBI').value = todayISO();
+  const hoy = todayISO();
+  document.getElementById('fechaInicioBI').value = hoy;
+  document.getElementById('fechaFinBI').value = hoy;
   cargarBI();
 });
 
-document.getElementById('rangoBI').addEventListener('change', cargarBI);
+document.getElementById('btnBIMes').addEventListener('click', () => {
+  document.getElementById('fechaInicioBI').value = firstDayOfCurrentMonthISO();
+  document.getElementById('fechaFinBI').value = todayISO();
+  cargarBI();
+});
+
+document.getElementById('btnBI30').addEventListener('click', () => {
+  const hoy = todayISO();
+  document.getElementById('fechaInicioBI').value = addDaysISO(hoy, -30);
+  document.getElementById('fechaFinBI').value = hoy;
+  cargarBI();
+});
+
+document.getElementById('btnBIDescargarGraficas').addEventListener('click', descargarGraficasBI);
+document.getElementById('btnBIImprimir').addEventListener('click', imprimirReporteBI);
+document.getElementById('btnExportarBICSV').addEventListener('click', exportarBICSV);
 
     document.getElementById('folioBuscar').addEventListener('keydown', e => {
       if (e.key === 'Enter') buscarFolio();
@@ -1357,7 +1571,8 @@ document.getElementById('btnRegistrarEntrada').addEventListener('click', registr
  document.getElementById('fechaVentas').value = hoy;
 document.getElementById('fechaAccesos').value = hoy;
 document.getElementById('fechaCorte').value = hoy;
-document.getElementById('fechaBI').value = hoy;
+document.getElementById('fechaInicioBI').value = addDaysISO(hoy, -30);
+document.getElementById('fechaFinBI').value = hoy;
 document.getElementById('tkFecha').value = hoy;
 
   await cargarCategoriasTaquilla();

@@ -2085,8 +2085,25 @@ app.get('/api/corte-basico', async (req, res) => {
 // ============================================
 app.get('/api/bi-dashboard', async (req, res) => {
     try {
-        const fecha = req.query.fecha || fechaHoyISO();
+        const fechaFin = String(req.query.fecha_fin || req.query.fecha || fechaHoyISO()).slice(0, 10);
         const dias = Number(req.query.dias || 30);
+
+        let fechaInicio = String(req.query.fecha_inicio || '').slice(0, 10);
+
+        if (!fechaInicio) {
+            const [rangoRows] = await pool.query(`
+                SELECT DATE_SUB(?, INTERVAL ? DAY) AS fecha_inicio
+            `, [fechaFin, dias]);
+
+            fechaInicio = String(rangoRows[0].fecha_inicio).slice(0, 10);
+        }
+
+        if (fechaInicio > fechaFin) {
+            return res.status(400).json({
+                success: false,
+                message: 'La fecha inicial no puede ser mayor que la fecha final'
+            });
+        }
 
         const diasSemana = {
             1: 'Domingo',
@@ -2098,7 +2115,73 @@ app.get('/api/bi-dashboard', async (req, res) => {
             7: 'Sábado'
         };
 
-        // Resumen del día seleccionado
+        const nombresMes = {
+            1: 'Enero',
+            2: 'Febrero',
+            3: 'Marzo',
+            4: 'Abril',
+            5: 'Mayo',
+            6: 'Junio',
+            7: 'Julio',
+            8: 'Agosto',
+            9: 'Septiembre',
+            10: 'Octubre',
+            11: 'Noviembre',
+            12: 'Diciembre'
+        };
+
+        function factorTemporada(mes) {
+            const factores = {
+                1: 1.15,
+                2: 0.85,
+                3: 1.00,
+                4: 1.25,
+                5: 0.95,
+                6: 1.05,
+                7: 1.45,
+                8: 1.30,
+                9: 0.80,
+                10: 0.95,
+                11: 1.10,
+                12: 1.35
+            };
+
+            return factores[mes] || 1;
+        }
+
+        function motivoTemporada(mes) {
+            const motivos = {
+                1: 'Vacaciones de invierno y visitas familiares',
+                2: 'Mes regular, menor movimiento escolar',
+                3: 'Mes regular con posible incremento por primavera',
+                4: 'Semana Santa y periodo vacacional',
+                5: 'Mes regular después de vacaciones',
+                6: 'Inicio de temporada de verano',
+                7: 'Vacaciones de verano, alta afluencia familiar',
+                8: 'Vacaciones y cierre de verano',
+                9: 'Regreso a clases, menor demanda',
+                10: 'Mes regular previo a puentes fuertes',
+                11: 'Puentes y fines de semana largos',
+                12: 'Vacaciones decembrinas'
+            };
+
+            return motivos[mes] || 'Comportamiento regular';
+        }
+
+        function sumarMes(fechaBase, offset) {
+            const fecha = new Date(`${fechaBase}T00:00:00`);
+            fecha.setMonth(fecha.getMonth() + offset);
+            return {
+                year: fecha.getFullYear(),
+                month: fecha.getMonth() + 1
+            };
+        }
+
+        function diasDelMes(year, month) {
+            return new Date(year, month, 0).getDate();
+        }
+
+        // Resumen del periodo
         const [resumenRows] = await pool.query(`
             SELECT
                 COUNT(*) AS total_operaciones,
@@ -2106,14 +2189,15 @@ app.get('/api/bi-dashboard', async (req, res) => {
                 COALESCE(SUM(CASE WHEN canal_venta = 'taquilla' THEN 1 ELSE 0 END), 0) AS ventas_taquilla,
                 COALESCE(SUM(CASE WHEN estado_pago = 'pendiente' THEN 1 ELSE 0 END), 0) AS pendientes_pago,
                 COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN 1 ELSE 0 END), 0) AS pagadas,
+                COALESCE(SUM(cantidad_personas), 0) AS personas_periodo,
                 COALESCE(SUM(total), 0) AS ingresos_estimados,
                 COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_cobrados
             FROM ventas
-            WHERE fecha_visita = ?
+            WHERE fecha_visita BETWEEN ? AND ?
               AND estado_pago <> 'cancelado'
-        `, [fecha]);
+        `, [fechaInicio, fechaFin]);
 
-        // Categorías más reservadas/vendidas del día
+        // Categorías más vendidas/reservadas
         const [categoriasRows] = await pool.query(`
             SELECT 
                 c.nombre,
@@ -2122,34 +2206,37 @@ app.get('/api/bi-dashboard', async (req, res) => {
             FROM detalle_venta dv
             INNER JOIN ventas v ON v.id = dv.venta_id
             INNER JOIN categorias c ON c.id = dv.categoria_id
-            WHERE v.fecha_visita = ?
+            WHERE v.fecha_visita BETWEEN ? AND ?
               AND v.estado_pago <> 'cancelado'
             GROUP BY c.id, c.nombre
             ORDER BY cantidad DESC
-        `, [fecha]);
+        `, [fechaInicio, fechaFin]);
 
-        // Estados de pago del día
+        // Estados de pago
         const [estadosRows] = await pool.query(`
             SELECT
                 estado_pago,
                 COUNT(*) AS total
             FROM ventas
-            WHERE fecha_visita = ?
+            WHERE fecha_visita BETWEEN ? AND ?
+              AND estado_pago <> 'cancelado'
             GROUP BY estado_pago
-        `, [fecha]);
+        `, [fechaInicio, fechaFin]);
 
-        // Comparación web vs taquilla del día
+        // Web vs taquilla
         const [canalesRows] = await pool.query(`
             SELECT
                 canal_venta,
-                COUNT(*) AS total
+                COUNT(*) AS total,
+                COALESCE(SUM(cantidad_personas), 0) AS personas,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_cobrados
             FROM ventas
-            WHERE fecha_visita = ?
+            WHERE fecha_visita BETWEEN ? AND ?
               AND estado_pago <> 'cancelado'
             GROUP BY canal_venta
-        `, [fecha]);
+        `, [fechaInicio, fechaFin]);
 
-        // Tendencia por fecha de visita en los últimos N días
+        // Tendencia por fecha
         const [tendenciaRows] = await pool.query(`
             SELECT
                 fecha_visita,
@@ -2158,12 +2245,11 @@ app.get('/api/bi-dashboard', async (req, res) => {
                 COALESCE(SUM(total), 0) AS ingresos_estimados,
                 COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_cobrados
             FROM ventas
-            WHERE fecha_visita >= DATE_SUB(?, INTERVAL ? DAY)
-              AND fecha_visita <= ?
+            WHERE fecha_visita BETWEEN ? AND ?
               AND estado_pago <> 'cancelado'
             GROUP BY fecha_visita
             ORDER BY fecha_visita ASC
-        `, [fecha, dias, fecha]);
+        `, [fechaInicio, fechaFin]);
 
         // Días de la semana con mayor demanda
         const [diasRows] = await pool.query(`
@@ -2173,12 +2259,11 @@ app.get('/api/bi-dashboard', async (req, res) => {
                 COALESCE(SUM(cantidad_personas), 0) AS personas,
                 COALESCE(SUM(total), 0) AS ingresos_estimados
             FROM ventas
-            WHERE fecha_visita >= DATE_SUB(?, INTERVAL ? DAY)
-              AND fecha_visita <= ?
+            WHERE fecha_visita BETWEEN ? AND ?
               AND estado_pago <> 'cancelado'
             GROUP BY DAYOFWEEK(fecha_visita)
             ORDER BY personas DESC
-        `, [fecha, dias, fecha]);
+        `, [fechaInicio, fechaFin]);
 
         const diasProcesados = diasRows.map(d => ({
             dia_numero: Number(d.dia_numero),
@@ -2188,27 +2273,79 @@ app.get('/api/bi-dashboard', async (req, res) => {
             ingresos_estimados: Number(d.ingresos_estimados || 0)
         }));
 
+        const diasBajos = [...diasProcesados]
+            .filter(d => Number(d.personas || 0) > 0)
+            .sort((a, b) => Number(a.personas || 0) - Number(b.personas || 0))
+            .slice(0, 5);
+
         const resumen = resumenRows[0] || {};
         const categoriaTop = categoriasRows.length ? categoriasRows[0].nombre : 'Sin datos';
         const diaTop = diasProcesados.length ? diasProcesados[0].dia_nombre : 'Sin datos';
+        const diaBajo = diasBajos.length ? diasBajos[0].dia_nombre : 'Sin datos';
 
         const pendientes = Number(resumen.pendientes_pago || 0);
         const pagadas = Number(resumen.pagadas || 0);
         const totalOps = Number(resumen.total_operaciones || 0);
+        const personasPeriodo = Number(resumen.personas_periodo || 0);
+
         const conversionPago = totalOps > 0
             ? Number(((pagadas / totalOps) * 100).toFixed(1))
             : 0;
 
+        const fechaInicioDate = new Date(`${fechaInicio}T00:00:00`);
+        const fechaFinDate = new Date(`${fechaFin}T00:00:00`);
+        const diasPeriodo = Math.max(
+            1,
+            Math.round((fechaFinDate - fechaInicioDate) / (1000 * 60 * 60 * 24)) + 1
+        );
+
+        const promedioDiario = personasPeriodo > 0
+            ? personasPeriodo / diasPeriodo
+            : 20;
+
+        const pronosticoMensual = [];
+
+        for (let i = 1; i <= 6; i++) {
+            const { year, month } = sumarMes(fechaFin, i);
+            const factor = factorTemporada(month);
+            const diasMes = diasDelMes(year, month);
+            const estimado = Math.round(promedioDiario * diasMes * factor);
+
+            pronosticoMensual.push({
+                year,
+                month,
+                mes_nombre: `${nombresMes[month]} ${year}`,
+                visitantes_estimados: estimado,
+                factor_temporada: factor,
+                motivo: motivoTemporada(month)
+            });
+        }
+
+        const canalTop = canalesRows.length
+            ? canalesRows
+                .map(c => ({
+                    canal_venta: c.canal_venta,
+                    total: Number(c.total || 0),
+                    personas: Number(c.personas || 0)
+                }))
+                .sort((a, b) => b.total - a.total)[0]
+            : null;
+
+        const mesPronosticoTop = pronosticoMensual.length
+            ? [...pronosticoMensual].sort((a, b) => b.visitantes_estimados - a.visitantes_estimados)[0]
+            : null;
+
         res.json({
             success: true,
-            fecha,
-            rango_dias: dias,
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
             resumen: {
-                total_operaciones: Number(resumen.total_operaciones || 0),
+                total_operaciones: totalOps,
                 reservaciones_web: Number(resumen.reservaciones_web || 0),
                 ventas_taquilla: Number(resumen.ventas_taquilla || 0),
                 pendientes_pago: pendientes,
                 pagadas,
+                personas_periodo: personasPeriodo,
                 ingresos_estimados: Number(resumen.ingresos_estimados || 0),
                 ingresos_cobrados: Number(resumen.ingresos_cobrados || 0),
                 conversion_pago: conversionPago
@@ -2224,7 +2361,9 @@ app.get('/api/bi-dashboard', async (req, res) => {
             })),
             canales: canalesRows.map(c => ({
                 canal_venta: c.canal_venta,
-                total: Number(c.total || 0)
+                total: Number(c.total || 0),
+                personas: Number(c.personas || 0),
+                ingresos_cobrados: Number(c.ingresos_cobrados || 0)
             })),
             tendencia_dias: tendenciaRows.map(t => ({
                 fecha_visita: String(t.fecha_visita).slice(0, 10),
@@ -2234,18 +2373,30 @@ app.get('/api/bi-dashboard', async (req, res) => {
                 ingresos_cobrados: Number(t.ingresos_cobrados || 0)
             })),
             dias_semana: diasProcesados,
+            dias_bajos: diasBajos,
+            pronostico_mensual: pronosticoMensual,
             insights: {
                 categoria_top: categoriaTop,
                 dia_top: diaTop,
+                dia_bajo: diaBajo,
                 mensaje_categoria: categoriaTop !== 'Sin datos'
-                    ? `La categoría con mayor demanda es ${categoriaTop}.`
+                    ? `La categoría con mayor demanda es ${categoriaTop}. Conviene crear paquetes o promociones relacionadas con este tipo de visitante.`
                     : 'Aún no hay suficientes datos por categoría.',
                 mensaje_dia: diaTop !== 'Sin datos'
-                    ? `El día con mayor demanda es ${diaTop}.`
+                    ? `El día con mayor demanda es ${diaTop}. Se recomienda reforzar atención en taquilla y acceso ese día.`
                     : 'Aún no hay suficientes datos por día.',
                 mensaje_pago: pendientes > 0
                     ? `Hay ${pendientes} reservación(es) pendiente(s) de pago. Conviene dar seguimiento en taquilla.`
-                    : 'No hay reservaciones pendientes de pago para esta fecha.'
+                    : 'No hay reservaciones pendientes de pago para este periodo.',
+                mensaje_promocion: diaBajo !== 'Sin datos'
+                    ? `El día con menor demanda es ${diaBajo}. Se recomienda probar una promoción 2x1 solo en compras en línea para aumentar visitantes sin saturar taquilla.`
+                    : 'Aún no hay suficientes datos para sugerir una promoción por día bajo.',
+                mensaje_canal: canalTop
+                    ? `El canal con más operaciones es ${canalTop.canal_venta === 'web' ? 'reservación web' : 'venta en taquilla'}. Se recomienda impulsar la venta web para reducir filas y mejorar la planeación.`
+                    : 'Aún no hay suficientes datos por canal.',
+                mensaje_pronostico: mesPronosticoTop
+                    ? `${mesPronosticoTop.mes_nombre} podría tener mayor afluencia aproximada por: ${mesPronosticoTop.motivo}.`
+                    : 'Aún no hay suficientes datos para generar pronóstico.'
             }
         });
     } catch (error) {

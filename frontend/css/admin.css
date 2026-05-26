@@ -1100,3 +1100,156 @@
     width: 100%;
   }
 }
+/* ===== BI PROFESIONAL ===== */
+
+.bi-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #fefae0 0%, #ffffff 55%, #eef7f0 100%);
+  border: 2px solid #d4a373;
+  border-radius: 22px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+}
+
+.bi-hero h3 {
+  border-left: none;
+  padding-left: 0;
+  margin: 4px 0 6px;
+  font-size: 1.65rem;
+}
+
+.bi-hero p {
+  margin: 0;
+  color: #5f6b7a;
+  max-width: 920px;
+}
+
+.bi-status {
+  min-width: 170px;
+  text-align: right;
+  background: white;
+  border: 2px solid #d4a373;
+  border-radius: 18px;
+  padding: 12px 14px;
+}
+
+.bi-status small {
+  display: block;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.bi-status strong {
+  color: #1b4332;
+}
+
+.bi-filters-pro {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto auto auto;
+  gap: 12px;
+  margin: 18px 0 10px;
+  align-items: end;
+}
+
+.bi-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.bi-chart-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.chart-help {
+  margin: -4px 0 14px;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.insight-card.decision {
+  border-left-color: #2d6a4f;
+  background: linear-gradient(145deg, #ffffff, #f8fff9);
+}
+
+.insight-card.decision h4 {
+  color: #1b4332;
+}
+
+@media (max-width: 1200px) {
+  .bi-filters-pro {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bi-filters-pro .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .bi-filters-pro,
+  .bi-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bi-actions {
+    justify-content: stretch;
+  }
+
+  .bi-actions .btn {
+    width: 100%;
+  }
+
+  .bi-status {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+/* Imprimir reporte BI como PDF */
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .sidebar,
+  .topbar,
+  .menu,
+  .bi-actions,
+  #msgBI {
+    display: none !important;
+  }
+
+  .layout {
+    display: block !important;
+  }
+
+  .main {
+    padding: 0 !important;
+  }
+
+  .panel {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .panel:not(#panel-bi) {
+    display: none !important;
+  }
+
+  #panel-bi {
+    display: block !important;
+  }
+
+  .chart-card {
+    page-break-inside: avoid;
+  }
+}
