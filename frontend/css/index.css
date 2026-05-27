@@ -618,4 +618,319 @@
 .promo-web-box small {
     display: block;
     color: #5f6b7a;
-}       
+} 
+/* ===== MEJORAS RESERVACIÓN PÚBLICA ===== */
+
+.zoo-header {
+    overflow: hidden;
+}
+
+.zoo-info {
+    align-items: stretch;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 58px;
+}
+
+.promo-web-box {
+    width: min(820px, 100%);
+    margin: 22px auto 0;
+    background: linear-gradient(145deg, #fff7df, #ffffff);
+    border: 2px solid #f9b81b;
+    border-left: 8px solid #bc6c25;
+    border-radius: 20px;
+    padding: 15px 18px;
+    color: #283618;
+    box-shadow: 0 12px 22px rgba(0,0,0,0.20);
+    text-align: left;
+}
+
+.promo-web-box strong {
+    display: block;
+    font-size: 1.1rem;
+    color: #bc6c25;
+    margin-bottom: 6px;
+}
+
+.promo-web-box span {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.promo-web-box small {
+    display: block;
+    color: #5f6b7a;
+    line-height: 1.4;
+}
+
+/* Tarjetas de precios más claras */
+.tarjetas-precios {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.precio-card {
+    min-height: 165px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.precio-card.info-free {
+    border-color: #2d6a4f;
+    background: linear-gradient(145deg, #eef7f0, #ffffff);
+}
+
+.precio-card.info-free::before {
+    background: linear-gradient(90deg, #1b4332, #2d6a4f);
+}
+
+.precio-desc {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #5f6b7a;
+    line-height: 1.35;
+}
+
+.precio-rango {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #fefae0;
+    color: #7a4b12;
+    border: 1px solid #d4a373;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+/* Total con subtotal / descuento / final */
+.total-resumen {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 12px;
+    text-align: left;
+    font-size: 1rem;
+}
+
+.total-resumen div {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.total-resumen span {
+    display: block;
+    color: rgba(255,255,255,0.82);
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+}
+
+.total-resumen strong {
+    display: block;
+    color: #f9b81b;
+    font-size: 1.35rem;
+    font-weight: 900;
+}
+
+.total-resumen .total-final strong {
+    font-size: 1.65rem;
+}
+
+/* Mensajes tipo toast: ya no deforman la interfaz */
+.mensaje {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 9999;
+    width: min(420px, calc(100% - 36px));
+    margin: 0;
+    padding: 15px 18px;
+    border-radius: 18px;
+    font-weight: 800;
+    display: none;
+    box-shadow: 0 18px 35px rgba(0,0,0,0.25);
+}
+
+.mensaje.ok,
+.mensaje.error {
+    display: block;
+    animation: toastIn 0.25s ease;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal del QR generado */
+.qr-container {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(8, 28, 21, 0.72);
+    backdrop-filter: blur(6px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.qr-container.show {
+    display: flex;
+}
+
+.qr-modal {
+    width: min(760px, 100%);
+    max-height: 92vh;
+    overflow-y: auto;
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+    border-radius: 28px;
+    border: 3px solid #f9b81b;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+    padding: 26px;
+    position: relative;
+    text-align: center;
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: #f8d7da;
+    color: #721c24;
+    font-size: 1.2rem;
+    font-weight: 900;
+}
+
+.modal-close:hover {
+    background: #f5c6cb;
+    transform: scale(1.05);
+}
+
+.qr-modal-header h2 {
+    color: #1b4332;
+    margin-bottom: 8px;
+}
+
+.qr-modal-header p {
+    color: #5f6b7a;
+    margin-bottom: 12px;
+}
+
+.qr-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.btn-nueva-reserva {
+    background: #2d6a4f;
+    color: white;
+    border: 2px solid #f9b81b;
+    padding: 12px 30px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1.05em;
+    font-weight: 700;
+}
+
+.btn-nueva-reserva:hover {
+    background: #1b4332;
+    transform: scale(1.04);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .total-resumen {
+        grid-template-columns: 1fr;
+    }
+
+    .total-resumen strong,
+    .total-resumen .total-final strong {
+        font-size: 1.35rem;
+    }
+
+    .zoo-header {
+        padding: 28px 18px;
+    }
+
+    .zoo-info {
+        gap: 12px;
+    }
+
+    .info-item {
+        width: 100%;
+        border-radius: 20px;
+    }
+
+    .promo-web-box {
+        margin-top: 16px;
+    }
+}
+
+@media (max-width: 700px) {
+    body {
+        padding: 10px;
+    }
+
+    .zoo-header h1 {
+        font-size: 1.9rem;
+        line-height: 1.15;
+    }
+
+    .zoo-header p {
+        font-size: 0.98rem;
+    }
+
+    .compra-form,
+    .consulta-box,
+    .tarifas {
+        padding: 20px 18px;
+    }
+
+    .compra-form h2,
+    .consulta-box h2,
+    .tarifas h2 {
+        font-size: 1.55rem;
+    }
+
+    .btn-comprar {
+        font-size: 1rem;
+        padding: 15px 18px;
+        letter-spacing: 1px;
+    }
+
+    .qr-modal {
+        padding: 22px 16px;
+    }
+
+    .qr-actions {
+        flex-direction: column;
+    }
+
+    .btn-descargar,
+    .btn-imprimir,
+    .btn-nueva-reserva {
+        width: 100%;
+        margin: 4px 0;
+    }
+}      
