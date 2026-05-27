@@ -934,3 +934,38 @@
         margin: 4px 0;
     }
 }      
+
+.public-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-ver-animales {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(145deg, #f9b81b, #bc6c25);
+    color: #283618;
+    text-decoration: none;
+    padding: 14px 24px;
+    border-radius: 999px;
+    font-weight: 900;
+    border: 2px solid rgba(255,255,255,0.8);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.25);
+    transition: 0.25s ease;
+}
+
+.btn-ver-animales:hover {
+    transform: translateY(-3px);
+    background: linear-gradient(145deg, #ffd166, #bc6c25);
+}
+
+@media (max-width: 600px) {
+    .btn-ver-animales {
+        width: 100%;
+        font-size: 0.95rem;
+        padding: 13px 16px;
+    }
+}

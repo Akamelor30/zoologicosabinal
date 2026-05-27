@@ -13,6 +13,8 @@ let chartTendencia = null;
 let chartIngresos = null;
 let chartDiasBajos = null;
 let chartPronostico = null;
+let animalesCache = [];
+let animalEditandoId = null;
 
 let ultimoBI = null;
 function mostrarUsuarioPanel(username) {
@@ -2129,6 +2131,253 @@ function imprimirCortePDF() {
   document.getElementById('detalleVenta').style.display = 'none';
   clearMessage('msgBuscar');
 }
+function escapeHTMLFront(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function actualizarPreviewAnimal() {
+  const img = document.getElementById('animalPreviewImg');
+  const url = document.getElementById('animalImagen')?.value.trim();
+
+  if (!img) return;
+
+  if (!url) {
+    img.src = '';
+    img.style.display = 'none';
+    return;
+  }
+
+  img.src = url;
+  img.style.display = 'block';
+}
+
+async function cargarAnimalesAdmin() {
+  const lista = document.getElementById('listaAnimalesAdmin');
+  if (!lista) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/animales-admin`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudieron cargar animales');
+    }
+
+    animalesCache = data.animales || [];
+
+    if (!animalesCache.length) {
+      lista.innerHTML = `
+        <div class="tiny-note">
+          Aún no hay animales registrados.
+        </div>
+      `;
+      return;
+    }
+
+    lista.innerHTML = animalesCache.map(a => `
+      <div class="animal-admin-card ${Number(a.activo) === 1 ? 'activo' : 'inactivo'}">
+        <img src="${escapeHTMLFront(a.imagen_url)}" alt="${escapeHTMLFront(a.nombre)}">
+
+        <div class="animal-admin-info">
+          <h4>${escapeHTMLFront(a.nombre)}</h4>
+          <p><strong>Especie:</strong> ${escapeHTMLFront(a.especie || 'No especificada')}</p>
+          <p><strong>Hábitat:</strong> ${escapeHTMLFront(a.habitat || 'No especificado')}</p>
+          <p><strong>Alimentación:</strong> ${escapeHTMLFront(a.alimentacion || 'No especificada')}</p>
+          <p>${escapeHTMLFront(a.descripcion || '')}</p>
+
+          <span class="animal-status ${Number(a.activo) === 1 ? 'ok' : 'off'}">
+            ${Number(a.activo) === 1 ? 'Visible en página pública' : 'Oculto'}
+          </span>
+        </div>
+
+        <div class="animal-admin-actions">
+          <button class="btn btn-outline btn-sm" onclick="editarAnimal(${a.id})">✏️ Modificar</button>
+
+          <button class="btn ${Number(a.activo) === 1 ? 'btn-danger' : 'btn-primary'} btn-sm" onclick="toggleAnimal(${a.id})">
+            ${Number(a.activo) === 1 ? 'Ocultar' : 'Mostrar'}
+          </button>
+
+          <button class="btn btn-danger btn-sm" onclick="eliminarAnimal(${a.id})">🗑️ Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    lista.innerHTML = 'Error cargando animales.';
+    setMessage('msgAnimales', '❌ ' + error.message, 'error');
+  }
+}
+
+function limpiarFormularioAnimal() {
+  animalEditandoId = null;
+
+  const editId = document.getElementById('animalEditId');
+  if (editId) editId.value = '';
+
+  document.getElementById('animalNombre').value = '';
+  document.getElementById('animalEspecie').value = '';
+  document.getElementById('animalHabitat').value = '';
+  document.getElementById('animalAlimentacion').value = '';
+  document.getElementById('animalImagen').value = '';
+  document.getElementById('animalOrden').value = '0';
+  document.getElementById('animalDescripcion').value = '';
+
+  const title = document.getElementById('animalFormTitle');
+  if (title) title.textContent = 'Nuevo animal';
+
+  const btn = document.getElementById('btnGuardarAnimal');
+  if (btn) btn.textContent = 'Guardar animal';
+
+  actualizarPreviewAnimal();
+  clearMessage('msgAnimales');
+}
+
+function editarAnimal(id) {
+  const animal = animalesCache.find(a => Number(a.id) === Number(id));
+
+  if (!animal) {
+    setMessage('msgAnimales', '❌ No se encontró el animal.', 'error');
+    return;
+  }
+
+  animalEditandoId = Number(id);
+
+  document.getElementById('animalEditId').value = String(id);
+  document.getElementById('animalNombre').value = animal.nombre || '';
+  document.getElementById('animalEspecie').value = animal.especie || '';
+  document.getElementById('animalHabitat').value = animal.habitat || '';
+  document.getElementById('animalAlimentacion').value = animal.alimentacion || '';
+  document.getElementById('animalImagen').value = animal.imagen_url || '';
+  document.getElementById('animalOrden').value = animal.orden || 0;
+  document.getElementById('animalDescripcion').value = animal.descripcion || '';
+
+  const title = document.getElementById('animalFormTitle');
+  if (title) title.textContent = 'Modificar animal';
+
+  const btn = document.getElementById('btnGuardarAnimal');
+  if (btn) btn.textContent = 'Actualizar animal';
+
+  actualizarPreviewAnimal();
+
+  setMessage('msgAnimales', '✏️ Editando animal. Modifica los datos y guarda.', 'ok');
+
+  const panel = document.getElementById('panel-animales');
+  if (panel) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+async function guardarAnimal() {
+  clearMessage('msgAnimales');
+
+  const editId = document.getElementById('animalEditId')?.value || '';
+  const idEditar = animalEditandoId || (editId ? Number(editId) : null);
+
+  const nombre = document.getElementById('animalNombre').value.trim();
+  const especie = document.getElementById('animalEspecie').value.trim();
+  const habitat = document.getElementById('animalHabitat').value.trim();
+  const alimentacion = document.getElementById('animalAlimentacion').value.trim();
+  const imagen_url = document.getElementById('animalImagen').value.trim();
+  const orden = Number(document.getElementById('animalOrden').value || 0);
+  const descripcion = document.getElementById('animalDescripcion').value.trim();
+
+  if (!nombre || !descripcion || !imagen_url) {
+    setMessage('msgAnimales', '❌ Completa nombre, descripción e imagen.', 'error');
+    return;
+  }
+
+  try {
+    const url = idEditar
+      ? `${API_BASE}/api/animales-admin/${idEditar}`
+      : `${API_BASE}/api/animales-admin`;
+
+    const method = idEditar ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre,
+        especie,
+        descripcion,
+        imagen_url,
+        habitat,
+        alimentacion,
+        orden,
+        activo: 1
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo guardar el animal');
+    }
+
+    setMessage(
+      'msgAnimales',
+      idEditar ? '✅ Animal actualizado correctamente.' : '✅ Animal agregado correctamente.',
+      'ok'
+    );
+
+    limpiarFormularioAnimal();
+    await cargarAnimalesAdmin();
+  } catch (error) {
+    setMessage('msgAnimales', '❌ ' + error.message, 'error');
+  }
+}
+
+async function toggleAnimal(id) {
+  try {
+    const res = await fetch(`${API_BASE}/api/animales-admin/${id}/toggle`, {
+      method: 'POST'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo cambiar el estado');
+    }
+
+    await cargarAnimalesAdmin();
+  } catch (error) {
+    setMessage('msgAnimales', '❌ ' + error.message, 'error');
+  }
+}
+
+async function eliminarAnimal(id) {
+  const animal = animalesCache.find(a => Number(a.id) === Number(id));
+  const nombre = animal ? animal.nombre : 'este animal';
+
+  const confirmado = confirm(`¿Seguro que deseas eliminar "${nombre}"?`);
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/animales-admin/${id}`, {
+      method: 'DELETE'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo eliminar el animal');
+    }
+
+    setMessage('msgAnimales', '✅ Animal eliminado correctamente.', 'ok');
+
+    if (Number(id) === Number(animalEditandoId)) {
+      limpiarFormularioAnimal();
+    }
+
+    await cargarAnimalesAdmin();
+  } catch (error) {
+    setMessage('msgAnimales', '❌ ' + error.message, 'error');
+  }
+}
 async function verificarSesionPanel() {
   try {
     const res = await fetch(`${API_BASE}/api/panel-me`, {
@@ -2234,6 +2483,9 @@ document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPro
 document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
 document.getElementById('btnRegistrarEntrada').addEventListener('click', registrarEntradaManualActual);
 
+document.getElementById('btnGuardarAnimal')?.addEventListener('click', guardarAnimal);
+document.getElementById('btnLimpiarAnimal')?.addEventListener('click', limpiarFormularioAnimal);
+document.getElementById('animalImagen')?.addEventListener('input', actualizarPreviewAnimal);
 
  document.addEventListener('DOMContentLoaded', async () => {
   const ok = await verificarSesionPanel();
@@ -2255,7 +2507,8 @@ cargarCategoriasPromos();
 limpiarFormularioPromo();
 await cargarPromociones();
 
-
+limpiarFormularioAnimal();
+await cargarAnimalesAdmin();
 
 await cargarDashboard();
 await cargarVentas();

@@ -1404,6 +1404,7 @@ app.use('/api/estadisticas', requirePanelAuth);
 app.use('/api/bi-dashboard', requirePanelAuth);
 app.use('/api/test-email', requirePanelAuth);
 app.use('/api/promociones', requirePanelAuth);
+app.use('/api/animales-admin', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
 app.use(/^\/api\/ventas\/[^/]+\/confirmar-pago$/, requirePanelAuth);
@@ -1491,6 +1492,293 @@ app.get('/api/categorias', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error obteniendo categorías',
+            error: error.message
+        });
+    }
+});
+// ============================================
+// 🐯 ANIMALES PÚBLICOS
+// ============================================
+app.get('/api/animales-publicos', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT
+                id,
+                nombre,
+                especie,
+                descripcion,
+                imagen_url,
+                habitat,
+                alimentacion
+            FROM animales
+            WHERE activo = 1
+            ORDER BY orden ASC, nombre ASC
+        `);
+
+        res.json({
+            success: true,
+            animales: rows
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo animales públicos',
+            error: error.message
+        });
+    }
+});
+
+// ============================================
+// 🐾 ANIMALES ADMIN
+// ============================================
+app.get('/api/animales-admin', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT
+                id,
+                nombre,
+                especie,
+                descripcion,
+                imagen_url,
+                habitat,
+                alimentacion,
+                activo,
+                orden,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM animales
+            ORDER BY orden ASC, nombre ASC
+        `);
+
+        res.json({
+            success: true,
+            animales: rows
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo animales',
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/animales-admin', async (req, res) => {
+    try {
+        const {
+            nombre,
+            especie = '',
+            descripcion,
+            imagen_url,
+            habitat = '',
+            alimentacion = '',
+            orden = 0,
+            activo = 1
+        } = req.body || {};
+
+        if (!nombre || !descripcion || !imagen_url) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre, descripción e imagen son obligatorios'
+            });
+        }
+
+        const [result] = await pool.query(`
+            INSERT INTO animales
+            (
+                nombre,
+                especie,
+                descripcion,
+                imagen_url,
+                habitat,
+                alimentacion,
+                orden,
+                activo
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            String(nombre).trim(),
+            String(especie || '').trim() || null,
+            String(descripcion).trim(),
+            String(imagen_url).trim(),
+            String(habitat || '').trim() || null,
+            String(alimentacion || '').trim() || null,
+            Number(orden || 0),
+            Number(activo) ? 1 : 0
+        ]);
+
+        res.json({
+            success: true,
+            message: '✅ Animal agregado correctamente',
+            id: result.insertId
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error guardando animal',
+            error: error.message
+        });
+    }
+});
+
+app.put('/api/animales-admin/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de animal no válido'
+            });
+        }
+
+        const {
+            nombre,
+            especie = '',
+            descripcion,
+            imagen_url,
+            habitat = '',
+            alimentacion = '',
+            orden = 0,
+            activo = 1
+        } = req.body || {};
+
+        if (!nombre || !descripcion || !imagen_url) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre, descripción e imagen son obligatorios'
+            });
+        }
+
+        const [existe] = await pool.query(`
+            SELECT id
+            FROM animales
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!existe.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Animal no encontrado'
+            });
+        }
+
+        await pool.query(`
+            UPDATE animales
+            SET
+                nombre = ?,
+                especie = ?,
+                descripcion = ?,
+                imagen_url = ?,
+                habitat = ?,
+                alimentacion = ?,
+                orden = ?,
+                activo = ?
+            WHERE id = ?
+        `, [
+            String(nombre).trim(),
+            String(especie || '').trim() || null,
+            String(descripcion).trim(),
+            String(imagen_url).trim(),
+            String(habitat || '').trim() || null,
+            String(alimentacion || '').trim() || null,
+            Number(orden || 0),
+            Number(activo) ? 1 : 0,
+            id
+        ]);
+
+        res.json({
+            success: true,
+            message: '✅ Animal actualizado correctamente'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error actualizando animal',
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/animales-admin/:id/toggle', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        const [rows] = await pool.query(`
+            SELECT activo
+            FROM animales
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!rows.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Animal no encontrado'
+            });
+        }
+
+        const nuevoEstado = Number(rows[0].activo) === 1 ? 0 : 1;
+
+        await pool.query(`
+            UPDATE animales
+            SET activo = ?
+            WHERE id = ?
+        `, [nuevoEstado, id]);
+
+        res.json({
+            success: true,
+            message: nuevoEstado ? '✅ Animal activado' : '✅ Animal desactivado',
+            activo: nuevoEstado
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error cambiando estado del animal',
+            error: error.message
+        });
+    }
+});
+
+app.delete('/api/animales-admin/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de animal no válido'
+            });
+        }
+
+        const [existe] = await pool.query(`
+            SELECT id
+            FROM animales
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!existe.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Animal no encontrado'
+            });
+        }
+
+        await pool.query(`
+            DELETE FROM animales
+            WHERE id = ?
+        `, [id]);
+
+        res.json({
+            success: true,
+            message: '✅ Animal eliminado correctamente'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error eliminando animal',
             error: error.message
         });
     }
@@ -3414,7 +3702,7 @@ app.get('/api/estadisticas', async (req, res) => {
             WHERE DATE(v.fecha_venta) = ?
               AND v.estado_pago <> 'cancelado'
             ORDER BY v.fecha_venta DESC
-            LIMIT 5
+            LIMIT 15
         `, [fecha]);
 
         const diaSemana = obtenerDiaSemanaMySQL(fecha);
