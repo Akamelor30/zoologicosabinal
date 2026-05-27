@@ -455,72 +455,221 @@ async function generarYGuardarQR(folio) {
     return qrPath;
 }
 function construirHtmlCorreo(venta, detalles) {
+    const subtotalSinDescuento = Number(venta.subtotal_sin_descuento ?? venta.total ?? 0);
+    const descuentoTotal = Number(venta.descuento_total ?? 0);
+    const totalFinal = Number(venta.total ?? 0);
+
     const detallesHTML = detalles.map(d => `
-        <li style="background:#f8f9fa;margin:6px 0;padding:10px;border-radius:10px;border-left:4px solid #bc6c25;">
-            <strong>${d.nombre}</strong> x${d.cantidad} — $${Number(d.subtotal).toFixed(2)} MXN
-        </li>
+        <tr>
+            <td style="padding:10px 12px;background:#202124;border-left:5px solid #bc6c25;border-radius:10px;color:#ffffff;">
+                <strong style="color:#ffffff;">${escapeHtml(d.nombre)}</strong>
+                <span style="color:#d8d8d8;"> x${Number(d.cantidad || 0)}</span>
+                <br>
+                <span style="color:#f9b81b;font-weight:700;">
+                    $${Number(d.subtotal || 0).toFixed(2)} MXN
+                </span>
+            </td>
+        </tr>
+        <tr><td style="height:8px;line-height:8px;font-size:0;">&nbsp;</td></tr>
     `).join('');
 
+    const promoHTML = descuentoTotal > 0 ? `
+        <tr>
+            <td style="padding:12px 14px;background:#fff3cd;border-left:5px solid #bc6c25;border-radius:10px;color:#856404;">
+                <strong>🎉 Promoción aplicada:</strong>
+                ${escapeHtml(venta.promocion_aplicada?.nombre || '2x1 web')}
+                <br>
+                <span>Descuento: <strong>$${descuentoTotal.toFixed(2)} MXN</strong></span>
+            </td>
+        </tr>
+        <tr><td style="height:12px;line-height:12px;font-size:0;">&nbsp;</td></tr>
+    ` : '';
+
     return `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8" />
-            <title>Reservación - Zoológico El Sabinal</title>
-        </head>
-        <body style="font-family:Segoe UI,Arial,sans-serif;background:#f0f0f0;margin:0;padding:20px;">
-            <div style="max-width:650px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.18);">
-                <div style="background:linear-gradient(145deg,#2d6a4f,#1b4d3d);padding:30px;text-align:center;border-bottom:5px solid #f9b81b;">
-                    <h1 style="color:#fff;margin:0;">🦁 ZOOLÓGICO EL SABINAL</h1>
-                    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0;">La Trinitaria, Chiapas</p>
-                </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservación - Zoológico El Sabinal</title>
+</head>
 
-                <div style="padding:30px;">
-                    <div style="background:#fefae0;padding:18px;border-radius:14px;border-left:8px solid #bc6c25;margin-bottom:22px;">
-                        <h2 style="margin:0 0 10px;color:#283618;">✅ Reservación registrada</h2>
-                        <p style="margin:6px 0;"><strong>Folio:</strong> ${venta.folio}</p>
-                        <p style="margin:6px 0;"><strong>Fecha de visita:</strong> ${formatearFecha(venta.fecha_visita)}</p>
-                        <p style="margin:6px 0;"><strong>Total a pagar en taquilla:</strong> $${Number(venta.total).toFixed(2)} MXN</p>
-                        <p style="margin:6px 0;"><strong>Total de personas:</strong> ${venta.cantidad_personas}</p>
-                        <p style="margin:6px 0;"><strong>Estado del pago:</strong> Pendiente de pago en taquilla</p>
-                    </div>
+<body style="margin:0;padding:0;background:#101820;font-family:Segoe UI,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#101820;margin:0;padding:0;width:100%;">
+        <tr>
+            <td align="center" style="padding:16px 10px;">
 
-                    <h3 style="color:#283618;border-bottom:3px solid #bc6c25;padding-bottom:8px;">🎟️ Detalle de la reservación</h3>
-                    <ul style="list-style:none;padding:0;margin:0 0 20px 0;">
-                        ${detallesHTML}
-                    </ul>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:620px;background:#151515;border-radius:18px;overflow:hidden;border:1px solid #333333;">
+                    
+                    <tr>
+                        <td align="center" style="background:#1b4332;padding:24px 18px;border-bottom:5px solid #f9b81b;">
+                            <h1 style="margin:0;color:#ffffff;font-size:26px;line-height:1.2;">
+                                🦁 Zoológico El Sabinal
+                            </h1>
+                            <p style="margin:8px 0 0;color:#d8f3dc;font-size:15px;">
+                                La Trinitaria, Chiapas
+                            </p>
+                        </td>
+                    </tr>
 
-                    <div style="text-align:center;margin:25px 0;padding:20px;background:#f8f9fa;border-radius:15px;border:2px dashed #bc6c25;">
-                        <p style="font-size:1.1em;color:#2d6a4f;margin-bottom:15px;">
-                            <strong>📱 Presenta este QR en taquilla para confirmar tu pago</strong>
-                        </p>
-                        <img src="cid:qr-unico" alt="QR de reservación" style="max-width:230px;border:5px solid white;border-radius:20px;box-shadow:0 5px 15px rgba(0,0,0,0.2);" />
-                    </div>
+                    <tr>
+                        <td style="padding:22px 18px;">
 
-                    <div style="background:#283618;color:#fff;padding:18px;border-radius:14px;">
-                        <h3 style="color:#f9b81b;margin:0 0 12px 0;">📍 Información importante</h3>
-                        <p style="margin:8px 0;">📌 <strong>Dirección:</strong> El Sabinal, La Trinitaria, Chiapas</p>
-                        <p style="margin:8px 0;">🕐 <strong>Horario:</strong> Lunes a Domingo - 9:00 AM a 5:00 PM</p>
-                        <p style="margin:8px 0;">📞 <strong>Informes:</strong> 963 123 4567</p>
-                    </div>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td style="background:#fefae0;border-left:7px solid #bc6c25;border-radius:14px;padding:16px;color:#283618;">
+                                        <h2 style="margin:0 0 10px;font-size:22px;line-height:1.2;color:#283618;">
+                                            ✅ Reservación registrada
+                                        </h2>
 
-                    <div style="margin-top:20px;padding:14px;background:#fff3cd;border-radius:10px;border-left:5px solid #856404;">
-                        <p style="margin:0;color:#856404;">
-                            <strong>⚠️ Importante:</strong> este QR corresponde a una reservación. Deberás presentarlo en taquilla y realizar el pago para poder ingresar. El QR será marcado como usado al momento de validar el acceso.
-                        </p>
-                    </div>
+                                        <p style="margin:7px 0;font-size:15px;">
+                                            <strong>Folio:</strong>
+                                            <span style="word-break:break-word;">${escapeHtml(venta.folio)}</span>
+                                        </p>
 
-                    <p style="text-align:center;margin-top:25px;color:#666;font-size:0.9em;">
-                        🌿 Gracias por reservar tu visita al Zoológico El Sabinal
-                    </p>
-                </div>
+                                        <p style="margin:7px 0;font-size:15px;">
+                                            <strong>Fecha de visita:</strong> ${formatearFecha(venta.fecha_visita)}
+                                        </p>
 
-                <div style="background:#1b4d3d;padding:14px;text-align:center;color:rgba(255,255,255,0.7);font-size:0.8em;">
-                    Zoológico El Sabinal © 2026
-                </div>
-            </div>
-        </body>
-        </html>
+                                        <p style="margin:7px 0;font-size:15px;">
+                                            <strong>Total de personas:</strong> ${Number(venta.cantidad_personas || 0)}
+                                        </p>
+
+                                        <p style="margin:7px 0;font-size:15px;">
+                                            <strong>Estado del pago:</strong> Pendiente de pago en taquilla
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td style="background:#202124;border-radius:14px;padding:16px;color:#ffffff;">
+                                        <h3 style="margin:0 0 12px;color:#f9b81b;font-size:20px;border-bottom:2px solid #bc6c25;padding-bottom:8px;">
+                                            🎟️ Detalle de la reservación
+                                        </h3>
+
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                            ${detallesHTML}
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                ${promoHTML}
+
+                                <tr>
+                                    <td style="padding:14px;background:#f8f9fa;border-radius:12px;color:#283618;">
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="padding:6px 0;font-size:15px;">Subtotal:</td>
+                                                <td align="right" style="padding:6px 0;font-size:15px;font-weight:700;">
+                                                    $${subtotalSinDescuento.toFixed(2)} MXN
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:6px 0;font-size:15px;">Descuento:</td>
+                                                <td align="right" style="padding:6px 0;font-size:15px;font-weight:700;color:#b02a37;">
+                                                    -$${descuentoTotal.toFixed(2)} MXN
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0 0;font-size:18px;font-weight:800;border-top:2px solid #d4a373;">
+                                                    Total a pagar:
+                                                </td>
+                                                <td align="right" style="padding:10px 0 0;font-size:20px;font-weight:900;color:#bc6c25;border-top:2px solid #d4a373;">
+                                                    $${totalFinal.toFixed(2)} MXN
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td align="center" style="background:#111111;border:2px dashed #bc6c25;border-radius:16px;padding:18px;">
+                                        <p style="margin:0 0 14px;color:#9dd9b5;font-size:18px;line-height:1.35;font-weight:800;">
+                                            📱 Presenta este QR en taquilla para confirmar tu pago
+                                        </p>
+
+                                        <img
+                                            src="cid:qr-unico"
+                                            alt="QR de reservación"
+                                            width="230"
+                                            style="display:block;width:230px;max-width:82%;height:auto;margin:0 auto;background:#ffffff;border:8px solid #ffffff;border-radius:18px;box-shadow:0 5px 15px rgba(0,0,0,0.35);"
+                                        >
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td style="background:#283618;color:#ffffff;padding:16px;border-radius:14px;">
+                                        <h3 style="color:#f9b81b;margin:0 0 12px;font-size:19px;">
+                                            📍 Información importante
+                                        </h3>
+
+                                        <p style="margin:8px 0;font-size:15px;line-height:1.4;">
+                                            📌 <strong>Dirección:</strong> El Sabinal, La Trinitaria, Chiapas
+                                        </p>
+
+                                        <p style="margin:8px 0;font-size:15px;line-height:1.4;">
+                                            🕐 <strong>Horario:</strong> Lunes a Domingo - 9:00 AM a 5:00 PM
+                                        </p>
+
+                                        <p style="margin:8px 0;font-size:15px;line-height:1.4;">
+                                            📞 <strong>Informes:</strong> 963 331 5111
+                                        </p>
+
+                                        <p style="margin:8px 0;font-size:15px;line-height:1.4;">
+                                            👶 <strong>Nota:</strong> Menores de 5 años entran gratis.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td style="background:#fff3cd;color:#856404;padding:14px;border-radius:12px;border-left:5px solid #856404;">
+                                        <p style="margin:0;font-size:15px;line-height:1.45;">
+                                            <strong>⚠️ Importante:</strong> este QR corresponde a una reservación. Deberás presentarlo en taquilla y realizar el pago para poder ingresar.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="text-align:center;margin:22px 0 0;color:#cccccc;font-size:14px;line-height:1.4;">
+                                🌿 Gracias por reservar tu visita al Zoológico El Sabinal
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td align="center" style="background:#1b4332;padding:13px;color:rgba(255,255,255,0.75);font-size:13px;">
+                            Zoológico El Sabinal © 2026
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
     `;
 }
 async function enviarCorreoQR({ email, venta, detalles, qrPath }) {
@@ -1881,12 +2030,20 @@ await conn.commit();
             try {
                 const resultadoCorreo = await enviarCorreoQR({
                     email: emailFinal,
-                    venta: {
-                        folio,
-                        fecha_visita,
-                        total,
-                        cantidad_personas: cantidadPersonas
-                    },
+                   venta: {
+    folio,
+    fecha_visita,
+    total,
+    cantidad_personas: cantidadPersonas,
+    subtotal_sin_descuento: subtotalSinDescuento,
+    descuento_total: descuentoTotal,
+    promocion_aplicada: promocionAplicada ? {
+        id: promocionAplicada.id,
+        nombre: promocionAplicada.nombre,
+        descripcion: promocionAplicada.descripcion,
+        tipo: promocionAplicada.tipo
+    } : null
+},
                     detalles,
                     qrPath
                 });
