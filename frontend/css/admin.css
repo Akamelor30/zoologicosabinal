@@ -1339,3 +1339,105 @@
     flex: 1;
   }
 }
+/* ===== CORTE BÁSICO PROFESIONAL ===== */
+
+.corte-filters {
+  grid-template-columns: 1fr auto auto auto auto;
+}
+
+.corte-grid-pro {
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 18px;
+}
+
+.corte-grid-pro .cut-item small {
+  display: block;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.total-corte {
+  background: linear-gradient(145deg, #1b4332, #2d6a4f);
+  border-color: #f9b81b;
+}
+
+.total-corte h4,
+.total-corte small {
+  color: rgba(255,255,255,0.86) !important;
+}
+
+.total-corte .n {
+  color: #f9b81b !important;
+}
+
+.corte-detalle-card {
+  margin-top: 20px;
+  background: #ffffff;
+  border: 2px solid #d4a373;
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 12px 26px rgba(0,0,0,0.08);
+}
+
+.corte-table-wrap {
+  max-height: 520px;
+}
+
+.corte-table {
+  min-width: 1180px;
+}
+
+.corte-table tfoot td {
+  background: #fefae0;
+  color: #283618;
+  font-weight: 900;
+  padding: 14px 12px;
+  border-top: 2px solid #d4a373;
+}
+
+.corte-canal {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 0.78rem;
+}
+
+.corte-canal.web {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.corte-canal.taquilla {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.corte-detalle-boletos {
+  color: #374151;
+  line-height: 1.45;
+  max-width: 420px;
+}
+
+@media (max-width: 1200px) {
+  .corte-filters,
+  .corte-grid-pro {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .corte-filters .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .corte-filters,
+  .corte-grid-pro {
+    grid-template-columns: 1fr;
+  }
+
+  .corte-detalle-card {
+    padding: 14px;
+  }
+}

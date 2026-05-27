@@ -2854,20 +2854,20 @@ app.get('/api/historial-ventas', async (req, res) => {
 
 
 // ============================================
-// 💰 CORTE BÁSICO
+// 💰 CORTE BÁSICO MEJORADO
 // ============================================
 app.get('/api/corte-basico', async (req, res) => {
     try {
         const fecha = req.query.fecha || fechaHoyISO();
 
-        const [ventasRows] = await pool.query(`
+        const [resumenRows] = await pool.query(`
             SELECT
                 COUNT(*) AS total_operaciones,
                 COALESCE(SUM(total), 0) AS monto_total,
                 COALESCE(SUM(CASE WHEN metodo_pago = 'efectivo' THEN total ELSE 0 END), 0) AS total_efectivo,
-                COALESCE(SUM(CASE WHEN metodo_pago = 'tarjeta' THEN total ELSE 0 END), 0) AS total_tarjeta,
-                COALESCE(SUM(CASE WHEN metodo_pago = 'transferencia' THEN total ELSE 0 END), 0) AS total_transferencia,
-                COALESCE(SUM(CASE WHEN metodo_pago = 'pago_en_linea' THEN total ELSE 0 END), 0) AS total_pago_en_linea
+                COALESCE(SUM(cantidad_personas), 0) AS total_personas,
+                COALESCE(SUM(CASE WHEN canal_venta = 'web' THEN 1 ELSE 0 END), 0) AS ventas_web,
+                COALESCE(SUM(CASE WHEN canal_venta = 'taquilla' THEN 1 ELSE 0 END), 0) AS ventas_taquilla
             FROM ventas
             WHERE DATE(fecha_venta) = ?
               AND estado_pago = 'pagado'
@@ -2881,11 +2881,64 @@ app.get('/api/corte-basico', async (req, res) => {
             WHERE DATE(fecha_acceso) = ?
         `, [fecha]);
 
+        const [detalleRows] = await pool.query(`
+            SELECT
+                v.id,
+                v.folio,
+                DATE_FORMAT(v.fecha_venta, '%H:%i') AS hora,
+                v.nombre_cliente,
+                v.email,
+                v.telefono,
+                v.canal_venta,
+                v.cantidad_personas,
+                v.total,
+                v.metodo_pago,
+                v.estado_pago,
+                v.estado_acceso,
+                COALESCE(
+                    GROUP_CONCAT(
+                        CONCAT(c.nombre, ' x', dv.cantidad, ' = $', FORMAT(dv.subtotal, 2))
+                        ORDER BY c.id
+                        SEPARATOR ' | '
+                    ),
+                    'Sin detalle'
+                ) AS detalle_boletos
+            FROM ventas v
+            LEFT JOIN detalle_venta dv ON dv.venta_id = v.id
+            LEFT JOIN categorias c ON c.id = dv.categoria_id
+            WHERE DATE(v.fecha_venta) = ?
+              AND v.estado_pago = 'pagado'
+            GROUP BY
+                v.id,
+                v.folio,
+                v.fecha_venta,
+                v.nombre_cliente,
+                v.email,
+                v.telefono,
+                v.canal_venta,
+                v.cantidad_personas,
+                v.total,
+                v.metodo_pago,
+                v.estado_pago,
+                v.estado_acceso
+            ORDER BY v.fecha_venta DESC
+        `, [fecha]);
+
+        const resumen = resumenRows[0] || {};
+        const accesos = accesosRows[0] || {};
+
         res.json({
             success: true,
             fecha,
-            ...ventasRows[0],
-            ...accesosRows[0]
+            total_operaciones: Number(resumen.total_operaciones || 0),
+            monto_total: Number(resumen.monto_total || 0),
+            total_efectivo: Number(resumen.total_efectivo || 0),
+            total_personas: Number(resumen.total_personas || 0),
+            ventas_web: Number(resumen.ventas_web || 0),
+            ventas_taquilla: Number(resumen.ventas_taquilla || 0),
+            accesos_aceptados: Number(accesos.accesos_aceptados || 0),
+            accesos_rechazados: Number(accesos.accesos_rechazados || 0),
+            detalle: detalleRows
         });
     } catch (error) {
         res.status(500).json({

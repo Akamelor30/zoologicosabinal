@@ -1589,33 +1589,335 @@ function exportarBICSV() {
 
   descargarCSV(`bi-reporte-${inicio}-${fin}.csv`, filas);
 }
-    async function cargarCorte() {
-      clearMessage('msgCorte');
+   let ultimoCorte = null;
 
-      const fecha = document.getElementById('fechaCorte').value;
-      try {
-        const params = new URLSearchParams();
-        if (fecha) params.set('fecha', fecha);
+function formatearCanalCorte(canal) {
+  const valor = String(canal || '').toLowerCase();
 
-        const res = await fetch(`${API_BASE}/api/corte-basico?${params.toString()}`);
-        const data = await res.json();
+  if (valor === 'web') {
+    return '<span class="corte-canal web">🌐 Web</span>';
+  }
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || 'No se pudo cargar el corte');
+  if (valor === 'taquilla') {
+    return '<span class="corte-canal taquilla">💵 Taquilla</span>';
+  }
+
+  return `<span class="corte-canal">${canal || 'N/A'}</span>`;
+}
+
+function renderCorteDetalle(detalle = []) {
+  const tbody = document.getElementById('tbodyCorteDetalle');
+  const totalDetalle = document.getElementById('corteTotalDetalle');
+
+  if (!tbody) return;
+
+  if (!detalle.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8">No hay ventas pagadas en esta fecha.</td>
+      </tr>
+    `;
+
+    if (totalDetalle) totalDetalle.textContent = money(0);
+    return;
+  }
+
+  tbody.innerHTML = detalle.map(v => `
+    <tr>
+      <td>${v.hora || '-'}</td>
+      <td><strong>${v.folio || 'N/A'}</strong></td>
+      <td>
+        <strong>${v.nombre_cliente || 'Cliente sin nombre'}</strong><br>
+        <small>${v.email || ''}</small>
+      </td>
+      <td>${formatearCanalCorte(v.canal_venta)}</td>
+      <td>${v.cantidad_personas || 0}</td>
+      <td class="corte-detalle-boletos">${v.detalle_boletos || 'Sin detalle'}</td>
+      <td><strong>${money(v.total)}</strong></td>
+      <td>${badgeEstado(v.estado_pago || 'pagado')}</td>
+    </tr>
+  `).join('');
+
+  const total = detalle.reduce((acc, v) => acc + Number(v.total || 0), 0);
+  if (totalDetalle) totalDetalle.textContent = money(total);
+}
+
+async function cargarCorte() {
+  clearMessage('msgCorte');
+
+  const fecha = document.getElementById('fechaCorte')?.value || todayISO();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/corte-basico?fecha=${encodeURIComponent(fecha)}`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo cargar el corte');
+    }
+
+    ultimoCorte = data;
+
+    document.getElementById('corteFechaLabel').textContent = `Fecha: ${data.fecha}`;
+    document.getElementById('corteOperaciones').textContent = data.total_operaciones || 0;
+    document.getElementById('corteMonto').textContent = money(data.monto_total);
+    document.getElementById('corteEfectivo').textContent = money(data.total_efectivo);
+    document.getElementById('cortePersonas').textContent = data.total_personas || 0;
+    document.getElementById('corteVentasWeb').textContent = data.ventas_web || 0;
+    document.getElementById('corteVentasTaquilla').textContent = data.ventas_taquilla || 0;
+    document.getElementById('corteAceptados').textContent = data.accesos_aceptados || 0;
+    document.getElementById('corteRechazados').textContent = data.accesos_rechazados || 0;
+
+    renderCorteDetalle(data.detalle || []);
+
+    setMessage('msgCorte', '✅ Corte cargado correctamente.', 'ok');
+  } catch (error) {
+    setMessage('msgCorte', '❌ ' + error.message, 'error');
+  }
+}
+
+function exportarCorteCSV() {
+  if (!ultimoCorte) {
+    setMessage('msgCorte', '❌ Primero consulta un corte.', 'error');
+    return;
+  }
+
+  const rows = [];
+
+  rows.push([
+    'Fecha',
+    'Hora',
+    'Folio',
+    'Cliente',
+    'Email',
+    'Canal',
+    'Personas',
+    'Detalle de boletos',
+    'Total',
+    'Estado de pago'
+  ]);
+
+  (ultimoCorte.detalle || []).forEach(v => {
+    rows.push([
+      ultimoCorte.fecha,
+      v.hora || '',
+      v.folio || '',
+      v.nombre_cliente || '',
+      v.email || '',
+      v.canal_venta || '',
+      v.cantidad_personas || 0,
+      v.detalle_boletos || '',
+      Number(v.total || 0).toFixed(2),
+      v.estado_pago || ''
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['', '', '', '', '', '', '', 'TOTAL', Number(ultimoCorte.monto_total || 0).toFixed(2), '']);
+
+  const csv = rows
+    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';'))
+    .join('\n');
+
+  const blob = new Blob(['\ufeff' + csv], {
+    type: 'text/csv;charset=utf-8;'
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `corte_${ultimoCorte.fecha}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function imprimirCortePDF() {
+  if (!ultimoCorte) {
+    setMessage('msgCorte', '❌ Primero consulta un corte.', 'error');
+    return;
+  }
+
+  const detalleHTML = (ultimoCorte.detalle || []).map(v => `
+    <tr>
+      <td>${v.hora || '-'}</td>
+      <td>${v.folio || 'N/A'}</td>
+      <td>${v.nombre_cliente || 'Cliente sin nombre'}</td>
+      <td>${v.canal_venta || 'N/A'}</td>
+      <td>${v.cantidad_personas || 0}</td>
+      <td>${v.detalle_boletos || 'Sin detalle'}</td>
+      <td>$${Number(v.total || 0).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const ventana = window.open('', '_blank', 'width=1000,height=800');
+
+  ventana.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Corte de caja ${ultimoCorte.fecha}</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 28px;
+          color: #1f2937;
+          background: #ffffff;
         }
 
-        document.getElementById('corteOperaciones').textContent = data.total_operaciones ?? 0;
-        document.getElementById('corteMonto').textContent = money(data.monto_total);
-        document.getElementById('corteEfectivo').textContent = money(data.total_efectivo);
-        document.getElementById('corteTarjeta').textContent = money(data.total_tarjeta);
-        document.getElementById('corteTransferencia').textContent = money(data.total_transferencia);
-        document.getElementById('corteOnline').textContent = money(data.total_pago_en_linea);
-        document.getElementById('corteAceptados').textContent = data.accesos_aceptados ?? 0;
-        document.getElementById('corteRechazados').textContent = data.accesos_rechazados ?? 0;
-      } catch (error) {
-        setMessage('msgCorte', '❌ ' + error.message, 'error');
-      }
-    }
+        .header {
+          border-bottom: 4px solid #bc6c25;
+          padding-bottom: 14px;
+          margin-bottom: 20px;
+        }
+
+        .header h1 {
+          margin: 0;
+          color: #1b4332;
+          font-size: 26px;
+        }
+
+        .header p {
+          margin: 6px 0 0;
+          color: #555;
+        }
+
+        .summary {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin: 20px 0;
+        }
+
+        .box {
+          border: 1px solid #d4a373;
+          border-radius: 12px;
+          padding: 12px;
+          background: #fefae0;
+        }
+
+        .box small {
+          display: block;
+          color: #555;
+          margin-bottom: 6px;
+        }
+
+        .box strong {
+          color: #bc6c25;
+          font-size: 20px;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 18px;
+          font-size: 12px;
+        }
+
+        th {
+          background: #283618;
+          color: white;
+          padding: 9px;
+          text-align: left;
+        }
+
+        td {
+          border-bottom: 1px solid #ddd;
+          padding: 8px;
+          vertical-align: top;
+        }
+
+        .total {
+          margin-top: 20px;
+          text-align: right;
+          font-size: 22px;
+          color: #bc6c25;
+          font-weight: 900;
+        }
+
+        .footer {
+          margin-top: 30px;
+          font-size: 12px;
+          color: #666;
+          border-top: 1px solid #ddd;
+          padding-top: 12px;
+        }
+
+        @media print {
+          body {
+            padding: 18px;
+          }
+
+          .summary {
+            grid-template-columns: repeat(4, 1fr);
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>💰 Corte de caja - Zoológico El Sabinal</h1>
+        <p><strong>Fecha:</strong> ${ultimoCorte.fecha}</p>
+        <p>Reporte de ventas pagadas y accesos registrados.</p>
+      </div>
+
+      <div class="summary">
+        <div class="box">
+          <small>Total operaciones</small>
+          <strong>${ultimoCorte.total_operaciones || 0}</strong>
+        </div>
+        <div class="box">
+          <small>Monto total</small>
+          <strong>${money(ultimoCorte.monto_total)}</strong>
+        </div>
+        <div class="box">
+          <small>Ventas web cobradas</small>
+          <strong>${ultimoCorte.ventas_web || 0}</strong>
+        </div>
+        <div class="box">
+          <small>Ventas taquilla</small>
+          <strong>${ultimoCorte.ventas_taquilla || 0}</strong>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Folio</th>
+            <th>Cliente</th>
+            <th>Canal</th>
+            <th>Personas</th>
+            <th>Detalle</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${detalleHTML || '<tr><td colspan="7">Sin ventas registradas.</td></tr>'}
+        </tbody>
+      </table>
+
+      <div class="total">
+        Total del corte: ${money(ultimoCorte.monto_total)}
+      </div>
+
+      <div class="footer">
+        Reporte generado desde el Panel de control del Zoológico El Sabinal.
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      <\/script>
+    </body>
+    </html>
+  `);
+
+  ventana.document.close();
+}
 
     async function exportarVentasCSV() {
       try {
@@ -1783,12 +2085,15 @@ document.getElementById('btnTkVerDetalle').addEventListener('click', verDetalleT
     document.getElementById('btnBuscarFolio').addEventListener('click', buscarFolio);
     document.getElementById('btnLimpiarBusqueda').addEventListener('click', limpiarBusqueda);
 
-    document.getElementById('btnCorte').addEventListener('click', cargarCorte);
-    document.getElementById('btnCorteHoy').addEventListener('click', () => {
-      document.getElementById('fechaCorte').value = todayISO();
-      cargarCorte();
-    });
-    document.getElementById('btnExportarCorte').addEventListener('click', exportarCorteCSV);
+    document.getElementById('btnCorte')?.addEventListener('click', cargarCorte);
+
+document.getElementById('btnCorteHoy')?.addEventListener('click', () => {
+  document.getElementById('fechaCorte').value = todayISO();
+  cargarCorte();
+});
+
+document.getElementById('btnExportarCorte')?.addEventListener('click', exportarCorteCSV);
+document.getElementById('btnImprimirCorte')?.addEventListener('click', imprimirCortePDF);
   document.getElementById('btnBI').addEventListener('click', cargarBI);
 
 document.getElementById('btnBIHoy').addEventListener('click', () => {
@@ -1825,8 +2130,7 @@ document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVe
 document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPromocion);
 document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
 document.getElementById('btnRegistrarEntrada').addEventListener('click', registrarEntradaManualActual);
-document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPromocion);
-document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
+
 
  document.addEventListener('DOMContentLoaded', async () => {
   const ok = await verificarSesionPanel();
@@ -1835,7 +2139,9 @@ document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFor
   const hoy = todayISO();
  document.getElementById('fechaVentas').value = hoy;
 document.getElementById('fechaAccesos').value = hoy;
-document.getElementById('fechaCorte').value = hoy;
+if (document.getElementById('fechaCorte')) {
+  document.getElementById('fechaCorte').value = todayISO();
+}
 document.getElementById('fechaInicioBI').value = addDaysISO(hoy, -30);
 document.getElementById('fechaFinBI').value = hoy;
 document.getElementById('tkFecha').value = hoy;
@@ -1846,8 +2152,7 @@ cargarCategoriasPromos();
 limpiarFormularioPromo();
 await cargarPromociones();
 
-cargarCategoriasPromos();
-await cargarPromociones();
+
 
 await cargarDashboard();
 await cargarVentas();
@@ -1877,3 +2182,4 @@ await cargarBI();
 }
   }, 30000);
 });
+

@@ -344,55 +344,129 @@
 </section>
 
       <section class="panel" id="panel-corte">
-        <h3>💰 Corte básico</h3>
+  <div class="bi-hero">
+    <div>
+      <span class="module-kicker">Caja / Corte diario</span>
+      <h3>💰 Corte básico</h3>
+      <p>
+        Consulta las ventas cobradas del día, revisa el detalle por cliente y genera un reporte listo para imprimir o guardar en PDF.
+      </p>
+    </div>
 
-        <div class="filters.single">
-          <div class="field">
-            <label for="fechaCorte">Fecha</label>
-            <input type="date" id="fechaCorte">
-          </div>
-          <button class="btn btn-primary" id="btnCorte">Consultar</button>
-          <button class="btn btn-secondary" id="btnCorteHoy">Hoy</button>
-          <button class="btn btn-secondary" id="btnExportarCorte">Exportar CSV</button>
-        </div>
+    <div class="bi-status">
+      <small>Tipo de pago</small>
+      <strong>💵 Efectivo</strong>
+    </div>
+  </div>
 
-        <div class="cut-grid">
-          <div class="cut-item">
-            <h4>Total operaciones</h4>
-            <div class="n" id="corteOperaciones">0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Monto total</h4>
-            <div class="n" id="corteMonto">$0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Efectivo</h4>
-            <div class="n" id="corteEfectivo">$0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Tarjeta</h4>
-            <div class="n" id="corteTarjeta">$0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Transferencia</h4>
-            <div class="n" id="corteTransferencia">$0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Pago en línea</h4>
-            <div class="n" id="corteOnline">$0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Accesos aceptados</h4>
-            <div class="n" id="corteAceptados">0</div>
-          </div>
-          <div class="cut-item">
-            <h4>Accesos rechazados</h4>
-            <div class="n" id="corteRechazados">0</div>
-          </div>
-        </div>
+  <div class="taquilla-alert">
+    <strong>ℹ️ Nota:</strong> el corte se genera por fecha de venta/cobro. 
+    Las reservaciones web aparecen cuando ya fueron confirmadas como pagadas en taquilla.
+  </div>
 
-              <div id="msgCorte" class="message"></div>
-      </section>
+  <div class="filters corte-filters">
+    <div class="field">
+      <label for="fechaCorte">Fecha de corte</label>
+      <input type="date" id="fechaCorte">
+    </div>
+
+    <button class="btn btn-primary" id="btnCorte">Consultar</button>
+    <button class="btn btn-secondary" id="btnCorteHoy">Hoy</button>
+    <button class="btn btn-secondary" id="btnExportarCorte">Exportar CSV</button>
+    <button class="btn btn-outline" id="btnImprimirCorte">Imprimir / guardar PDF</button>
+  </div>
+
+  <div class="cut-grid corte-grid-pro">
+    <div class="cut-item">
+      <h4>Total operaciones</h4>
+      <div class="n" id="corteOperaciones">0</div>
+      <small>Ventas cobradas</small>
+    </div>
+
+    <div class="cut-item total-corte">
+      <h4>Monto total</h4>
+      <div class="n" id="corteMonto">$0.00</div>
+      <small>Total del corte</small>
+    </div>
+
+    <div class="cut-item">
+      <h4>Efectivo</h4>
+      <div class="n" id="corteEfectivo">$0.00</div>
+      <small>Cobrado en caja</small>
+    </div>
+
+    <div class="cut-item">
+      <h4>Personas / boletos</h4>
+      <div class="n" id="cortePersonas">0</div>
+      <small>Total de visitantes</small>
+    </div>
+
+    <div class="cut-item">
+      <h4>Ventas web cobradas</h4>
+      <div class="n" id="corteVentasWeb">0</div>
+      <small>Reservaciones confirmadas</small>
+    </div>
+
+    <div class="cut-item">
+      <h4>Ventas en taquilla</h4>
+      <div class="n" id="corteVentasTaquilla">0</div>
+      <small>Ventas presenciales</small>
+    </div>
+
+    <div class="cut-item">
+      <h4>Accesos aceptados</h4>
+      <div class="n" id="corteAceptados">0</div>
+      <small>Entradas válidas</small>
+    </div>
+
+    <div class="cut-item">
+      <h4>Accesos rechazados</h4>
+      <div class="n" id="corteRechazados">0</div>
+      <small>Intentos no válidos</small>
+    </div>
+  </div>
+
+  <div class="corte-detalle-card">
+    <div class="section-title-row">
+      <div>
+        <h4>📋 Detalle de ventas del corte</h4>
+        <p>Listado de operaciones cobradas durante la fecha seleccionada.</p>
+      </div>
+      <span class="pill-soft" id="corteFechaLabel">Sin fecha</span>
+    </div>
+
+    <div class="table-wrap corte-table-wrap">
+      <table class="corte-table">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Folio</th>
+            <th>Cliente</th>
+            <th>Canal</th>
+            <th>Personas</th>
+            <th>Detalle de boletos</th>
+            <th>Total</th>
+            <th>Pago</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyCorteDetalle">
+          <tr>
+            <td colspan="8">Consulta una fecha para cargar el corte.</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align:right;">Total del corte:</td>
+            <td id="corteTotalDetalle">$0.00</td>
+            <td>Pagado</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div id="msgCorte" class="message"></div>
+</section>
 
       <section class="panel" id="panel-bi">
   <div class="bi-hero">
