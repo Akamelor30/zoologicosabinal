@@ -1802,3 +1802,182 @@
     text-align: left;
   }
 }
+
+/* ===== AJUSTE FINAL DASHBOARD MÁS GRANDE ===== */
+
+.dashboard-panel {
+  min-height: calc(100vh - 175px);
+  padding: 22px;
+}
+
+.dashboard-head {
+  margin-bottom: 16px;
+}
+
+.dashboard-cards {
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.dash-card {
+  min-height: 135px;
+  padding: 18px;
+}
+
+.dash-card h4 {
+  font-size: 0.92rem;
+}
+
+.dash-card .value {
+  font-size: 1.9rem;
+}
+
+.dash-card small {
+  font-size: 0.82rem;
+}
+
+.dashboard-grid {
+  grid-template-columns: 0.95fr 1.05fr 1.45fr 0.95fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.dashboard-box {
+  min-height: 285px;
+  padding: 18px;
+}
+
+.mini-chart-wrap {
+  height: 155px;
+  margin: 8px 0 12px;
+}
+
+.mini-chart-wrap canvas {
+  height: 155px !important;
+}
+
+.channel-summary div {
+  padding: 12px;
+}
+
+.channel-summary strong {
+  font-size: 1.35rem;
+}
+
+.alert-list {
+  gap: 12px;
+}
+
+.dash-alert {
+  padding: 14px;
+}
+
+.dash-alert span {
+  width: 42px;
+  height: 42px;
+  font-size: 1.25rem;
+}
+
+.dash-alert strong {
+  font-size: 1rem;
+}
+
+.dash-alert small {
+  font-size: 0.8rem;
+}
+
+/* Scroll interno para actividad reciente */
+.recent-list {
+  max-height: 225px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.recent-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.recent-list::-webkit-scrollbar-track {
+  background: #f1f5f3;
+  border-radius: 999px;
+}
+
+.recent-list::-webkit-scrollbar-thumb {
+  background: #bc6c25;
+  border-radius: 999px;
+}
+
+.recent-list::-webkit-scrollbar-thumb:hover {
+  background: #8f4f17;
+}
+
+.recent-item {
+  grid-template-columns: 65px 1fr auto;
+  padding: 11px 12px;
+}
+
+.recent-time {
+  font-size: 0.82rem;
+}
+
+.recent-main strong {
+  font-size: 0.92rem;
+}
+
+.recent-main small {
+  font-size: 0.78rem;
+}
+
+.recent-total {
+  font-size: 0.96rem;
+}
+
+.quick-actions {
+  gap: 12px;
+}
+
+.quick-btn {
+  padding: 13px 14px;
+}
+
+.quick-btn span {
+  width: 40px;
+  height: 40px;
+}
+
+.quick-btn strong {
+  font-size: 0.92rem;
+}
+
+/* Para que no se rompa en pantallas medianas */
+@media (max-width: 1400px) {
+  .dashboard-panel {
+    min-height: auto;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboard-recent {
+    grid-column: span 1;
+  }
+
+  .dashboard-actions {
+    grid-column: span 1;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1000px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recent-list {
+    max-height: 280px;
+  }
+}
