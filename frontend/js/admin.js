@@ -7,6 +7,7 @@ let ventaTaquillaActual = null;
 let chartCategorias = null;
 let chartEstados = null;
 let chartCanales = null;
+let chartDashboardCanales = null;
 let chartDiasSemana = null;
 let chartTendencia = null;
 let chartIngresos = null;
@@ -1160,25 +1161,127 @@ function verDetalleTaquilla() {
   buscarFolio();
 }
 
-    async function cargarDashboard() {
-      clearMessage('msgDashboard');
-      try {
-        const res = await fetch(`${API_BASE}/api/estadisticas`);
-        const data = await res.json();
+    function formatoFechaMX(fechaISO) {
+  if (!fechaISO) return '--/--/----';
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || 'No se pudieron cargar las estadísticas');
+  const [y, m, d] = String(fechaISO).slice(0, 10).split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function renderDashboardRecientes(ventas = []) {
+  const wrap = document.getElementById('dashboardRecientes');
+  if (!wrap) return;
+
+  if (!ventas.length) {
+    wrap.innerHTML = `
+      <div class="recent-empty">
+        Sin operaciones recientes por ahora.
+      </div>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = ventas.map(v => `
+    <div class="recent-item">
+      <div class="recent-time">${v.hora || '--:--'}</div>
+
+      <div class="recent-main">
+        <strong>${v.nombre_cliente || 'Cliente sin nombre'}</strong>
+        <small>
+          ${v.folio || 'Sin folio'} · 
+          ${v.canal_venta === 'taquilla' ? '💵 Taquilla' : '🌐 Web'} · 
+          ${v.estado_pago || 'N/A'}
+        </small>
+      </div>
+
+      <div class="recent-total">${money(v.total)}</div>
+    </div>
+  `).join('');
+}
+
+function renderDashboardCanales(data) {
+  const canales = data.canales || {};
+  const web = Number(canales.web || 0);
+  const taquilla = Number(canales.taquilla || 0);
+
+  const dashWeb = document.getElementById('dashWeb');
+  const dashTaquilla = document.getElementById('dashTaquilla');
+
+  if (dashWeb) dashWeb.textContent = web;
+  if (dashTaquilla) dashTaquilla.textContent = taquilla;
+
+  chartDashboardCanales = destruirChart(chartDashboardCanales);
+
+  const canvas = document.getElementById('chartDashboardCanales');
+  if (!canvas) return;
+
+  chartDashboardCanales = crearGrafica(
+    'chartDashboardCanales',
+    'doughnut',
+    ['Web', 'Taquilla'],
+    [web, taquilla],
+    'Canales de venta',
+    {
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom'
         }
-
-        document.getElementById('cardVentasHoy').textContent = data.ventas_hoy ?? 0;
-        document.getElementById('cardIngresosHoy').textContent = money(data.ingresos_hoy);
-        document.getElementById('cardAccesosAceptados').textContent = data.visitantes_actuales ?? 0;
-        document.getElementById('cardPendientes').textContent = data.qr_pendientes_hoy ?? 0;
-        document.getElementById('cardMasVendido').textContent = data.boletos_mas_vendidos || '---';
-      } catch (error) {
-        setMessage('msgDashboard', '❌ ' + error.message, 'error');
-      }
+      },
+      cutout: '62%'
     }
+  );
+}
+
+function renderDashboardAlertas(data) {
+  const pendientes = Number(data.qr_pendientes_hoy || 0);
+  const personas = Number(data.personas_hoy || 0);
+  const promocion = data.promocion_activa;
+
+  const pendientesTexto = document.getElementById('dashPendientesTexto');
+  const personasTexto = document.getElementById('dashPersonasTexto');
+  const promoTexto = document.getElementById('dashPromoTexto');
+
+  if (pendientesTexto) {
+    pendientesTexto.textContent = `${pendientes} pendiente${pendientes === 1 ? '' : 's'}`;
+  }
+
+  if (personasTexto) {
+    personasTexto.textContent = `${personas} persona${personas === 1 ? '' : 's'}`;
+  }
+
+  if (promoTexto) {
+    promoTexto.textContent = promocion
+      ? `${promocion.nombre}${promocion.categoria_nombre ? ' · ' + promocion.categoria_nombre : ''}`
+      : 'Sin promoción activa';
+  }
+}
+
+async function cargarDashboard() {
+  clearMessage('msgDashboard');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/estadisticas`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudieron cargar las estadísticas');
+    }
+
+    document.getElementById('dashboardFechaHoy').textContent = formatoFechaMX(data.fecha);
+    document.getElementById('cardVentasHoy').textContent = data.ventas_hoy ?? 0;
+    document.getElementById('cardIngresosHoy').textContent = money(data.ingresos_hoy);
+    document.getElementById('cardAccesosAceptados').textContent = data.visitantes_actuales ?? 0;
+    document.getElementById('cardPendientes').textContent = data.qr_pendientes_hoy ?? 0;
+    document.getElementById('cardMasVendido').textContent = data.boletos_mas_vendidos || '---';
+
+    renderDashboardCanales(data);
+    renderDashboardAlertas(data);
+    renderDashboardRecientes(data.ultimas_ventas || []);
+  } catch (error) {
+    setMessage('msgDashboard', '❌ ' + error.message, 'error');
+  }
+}
 
     async function cargarVentas() {
       clearMessage('msgVentas');

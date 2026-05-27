@@ -3357,7 +3357,10 @@ app.get('/api/estadisticas', async (req, res) => {
         const [ventasHoyRows] = await pool.query(`
             SELECT 
                 COUNT(*) AS ventas_hoy,
-                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_hoy
+                COALESCE(SUM(CASE WHEN estado_pago = 'pagado' THEN total ELSE 0 END), 0) AS ingresos_hoy,
+                COALESCE(SUM(cantidad_personas), 0) AS personas_hoy,
+                COALESCE(SUM(CASE WHEN canal_venta = 'web' THEN 1 ELSE 0 END), 0) AS ventas_web,
+                COALESCE(SUM(CASE WHEN canal_venta = 'taquilla' THEN 1 ELSE 0 END), 0) AS ventas_taquilla
             FROM ventas
             WHERE DATE(fecha_venta) = ?
               AND estado_pago <> 'cancelado'
@@ -3365,22 +3368,22 @@ app.get('/api/estadisticas', async (req, res) => {
 
         const [accesosHoyRows] = await pool.query(`
             SELECT 
-                COUNT(*) AS accesos_aceptados_hoy
+                COALESCE(SUM(CASE WHEN resultado = 'aceptado' THEN 1 ELSE 0 END), 0) AS accesos_aceptados_hoy,
+                COALESCE(SUM(CASE WHEN resultado = 'rechazado' THEN 1 ELSE 0 END), 0) AS accesos_rechazados_hoy
             FROM accesos
             WHERE DATE(fecha_acceso) = ?
-              AND resultado = 'aceptado'
         `, [fecha]);
 
         const [pendientesRows] = await pool.query(`
-    SELECT 
-        COUNT(*) AS pendientes_hoy
-    FROM ventas
-    WHERE fecha_visita = ?
-      AND canal_venta = 'web'
-      AND estado_acceso = 'pendiente'
-      AND estado_pago <> 'cancelado'
-      AND qr_usado = 0
-`, [fecha]);
+            SELECT 
+                COUNT(*) AS pendientes_hoy
+            FROM ventas
+            WHERE fecha_visita = ?
+              AND canal_venta = 'web'
+              AND estado_acceso = 'pendiente'
+              AND estado_pago <> 'cancelado'
+              AND qr_usado = 0
+        `, [fecha]);
 
         const [masVendidaRows] = await pool.query(`
             SELECT 
@@ -3396,13 +3399,68 @@ app.get('/api/estadisticas', async (req, res) => {
             LIMIT 1
         `, [fecha]);
 
+        const [ultimasVentasRows] = await pool.query(`
+            SELECT
+                v.folio,
+                DATE_FORMAT(v.fecha_venta, '%H:%i') AS hora,
+                v.nombre_cliente,
+                v.email,
+                v.canal_venta,
+                v.estado_pago,
+                v.estado_acceso,
+                v.cantidad_personas,
+                v.total
+            FROM ventas v
+            WHERE DATE(v.fecha_venta) = ?
+              AND v.estado_pago <> 'cancelado'
+            ORDER BY v.fecha_venta DESC
+            LIMIT 5
+        `, [fecha]);
+
+        const diaSemana = obtenerDiaSemanaMySQL(fecha);
+
+        const [promoRows] = await pool.query(`
+            SELECT 
+                p.id,
+                p.nombre,
+                p.descripcion,
+                p.tipo,
+                p.canal,
+                p.categoria_id,
+                c.nombre AS categoria_nombre
+            FROM promociones p
+            LEFT JOIN categorias c ON c.id = p.categoria_id
+            WHERE p.activo = 1
+              AND p.canal IN ('web', 'ambos')
+              AND p.fecha_inicio <= ?
+              AND p.fecha_fin >= ?
+              AND (p.dia_semana IS NULL OR p.dia_semana = ?)
+            ORDER BY p.fecha_creacion DESC
+            LIMIT 1
+        `, [fecha, fecha, diaSemana]);
+
+        const ventas = ventasHoyRows[0] || {};
+        const accesos = accesosHoyRows[0] || {};
+        const pendientes = pendientesRows[0] || {};
+
         res.json({
             success: true,
-            ventas_hoy: Number(ventasHoyRows[0].ventas_hoy || 0),
-            ingresos_hoy: Number(ventasHoyRows[0].ingresos_hoy || 0),
-            visitantes_actuales: Number(accesosHoyRows[0].accesos_aceptados_hoy || 0),
-            qr_pendientes_hoy: Number(pendientesRows[0].pendientes_hoy || 0),
+            fecha,
+            ventas_hoy: Number(ventas.ventas_hoy || 0),
+            ingresos_hoy: Number(ventas.ingresos_hoy || 0),
+            personas_hoy: Number(ventas.personas_hoy || 0),
+            visitantes_actuales: Number(accesos.accesos_aceptados_hoy || 0),
+            accesos_rechazados_hoy: Number(accesos.accesos_rechazados_hoy || 0),
+            qr_pendientes_hoy: Number(pendientes.pendientes_hoy || 0),
             boletos_mas_vendidos: masVendidaRows.length ? masVendidaRows[0].nombre : 'Sin datos',
+
+            canales: {
+                web: Number(ventas.ventas_web || 0),
+                taquilla: Number(ventas.ventas_taquilla || 0)
+            },
+
+            promocion_activa: promoRows.length ? promoRows[0] : null,
+            ultimas_ventas: ultimasVentasRows,
             alertas_fraude: 0
         });
     } catch (error) {

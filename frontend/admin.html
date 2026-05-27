@@ -50,39 +50,168 @@
     </div>
   </div>
 </section>
+<section class="panel active dashboard-panel" id="panel-dashboard">
+  <div class="dashboard-head">
+    <div>
+      <h3>📊 Dashboard general</h3>
+      <p>Resumen operativo del día, ventas recientes, canales y alertas rápidas.</p>
+    </div>
 
-      <section class="panel active" id="panel-dashboard">
-        <h3>📊 Dashboard general</h3>
-        <div class="cards">
-          <div class="card">
-            <h4>Operaciones hoy</h4>
-            <div class="value" id="cardVentasHoy">0</div>
-           <small>Reservaciones y ventas registradas</small>
-          </div>
-          <div class="card">
-           <h4>Ingresos cobrados hoy</h4>
-            <div class="value" id="cardIngresosHoy">$0</div>
-           <small>Pagos confirmados en taquilla</small>
-          </div>
-          <div class="card">
-            <h4>Accesos aceptados</h4>
-            <div class="value" id="cardAccesosAceptados">0</div>
-            <small>Entradas válidas</small>
-          </div>
-          <div class="card">
-           <h4>Reservaciones pendientes</h4>
-<div class="value" id="cardPendientes">0</div>
-<small>QR web pendientes de pago o ingreso</small>
-          </div>
-          <div class="card">
-            <h4>Más vendido</h4>
-            <div class="value" id="cardMasVendido" style="font-size:1.15rem;">---</div>
-            <small>Categoría más vendida</small>
+    <div class="dashboard-date-chip">
+      <small>Fecha de operación</small>
+      <strong id="dashboardFechaHoy">--/--/----</strong>
+    </div>
+  </div>
+
+  <div class="cards dashboard-cards">
+    <div class="card dash-card">
+      <div class="dash-icon">🧾</div>
+      <h4>Operaciones hoy</h4>
+      <div class="value" id="cardVentasHoy">0</div>
+      <small>Reservaciones y ventas registradas</small>
+    </div>
+
+    <div class="card dash-card">
+      <div class="dash-icon">💵</div>
+      <h4>Ingresos cobrados hoy</h4>
+      <div class="value" id="cardIngresosHoy">$0</div>
+      <small>Pagos confirmados en taquilla</small>
+    </div>
+
+    <div class="card dash-card">
+      <div class="dash-icon">🚪</div>
+      <h4>Accesos aceptados</h4>
+      <div class="value" id="cardAccesosAceptados">0</div>
+      <small>Entradas válidas registradas</small>
+    </div>
+
+    <div class="card dash-card">
+      <div class="dash-icon">⏳</div>
+      <h4>Reservaciones pendientes</h4>
+      <div class="value" id="cardPendientes">0</div>
+      <small>QR web pendientes de pago o ingreso</small>
+    </div>
+
+    <div class="card dash-card">
+      <div class="dash-icon">🏆</div>
+      <h4>Más vendido</h4>
+      <div class="value" id="cardMasVendido">---</div>
+      <small>Categoría más solicitada</small>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-box dashboard-chart-box">
+      <div class="dash-box-title">
+        <div>
+          <h4>🌐 Canales de venta</h4>
+          <p>Comparación rápida entre web y taquilla.</p>
+        </div>
+      </div>
+
+      <div class="mini-chart-wrap">
+        <canvas id="chartDashboardCanales"></canvas>
+      </div>
+
+      <div class="channel-summary">
+        <div>
+          <span>🌐 Web</span>
+          <strong id="dashWeb">0</strong>
+        </div>
+        <div>
+          <span>💵 Taquilla</span>
+          <strong id="dashTaquilla">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-box dashboard-alerts">
+      <div class="dash-box-title">
+        <div>
+          <h4>⚡ Estado rápido</h4>
+          <p>Datos clave para operar el día.</p>
+        </div>
+      </div>
+
+      <div class="alert-list">
+        <div class="dash-alert warn">
+          <span>⏳</span>
+          <div>
+            <strong id="dashPendientesTexto">0 pendientes</strong>
+            <small>Reservaciones web por confirmar.</small>
           </div>
         </div>
-        <div class="tiny-note">Actualización automática cada 30 segundos.</div>
-        <div id="msgDashboard" class="message"></div>
-      </section>
+
+        <div class="dash-alert ok">
+          <span>🎟️</span>
+          <div>
+            <strong id="dashPersonasTexto">0 personas</strong>
+            <small>Visitantes esperados/registrados hoy.</small>
+          </div>
+        </div>
+
+        <div class="dash-alert info">
+          <span>🎯</span>
+          <div>
+            <strong id="dashPromoTexto">Sin promoción activa</strong>
+            <small>Promoción web vigente para hoy.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-box dashboard-recent">
+      <div class="dash-box-title">
+        <div>
+          <h4>🕘 Actividad reciente</h4>
+          <p>Últimas operaciones registradas.</p>
+        </div>
+
+        <button class="btn btn-outline btn-sm" onclick="cambiarPanel('ventas')">
+          Ver ventas
+        </button>
+      </div>
+
+      <div class="recent-list" id="dashboardRecientes">
+        <div class="recent-empty">Cargando actividad reciente...</div>
+      </div>
+    </div>
+
+    <div class="dashboard-box dashboard-actions">
+      <div class="dash-box-title">
+        <div>
+          <h4>🚀 Accesos rápidos</h4>
+          <p>Atajos principales del panel.</p>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="cambiarPanel('taquilla')">
+          <span>🏷️</span>
+          <strong>Venta en taquilla</strong>
+        </button>
+
+        <button class="quick-btn" onclick="cambiarPanel('buscar')">
+          <span>🔎</span>
+          <strong>Buscar folio</strong>
+        </button>
+
+        <button class="quick-btn" onclick="cambiarPanel('corte')">
+          <span>💰</span>
+          <strong>Corte del día</strong>
+        </button>
+
+        <a class="quick-btn" href="/lector.html">
+          <span>📷</span>
+          <strong>Lector QR</strong>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="tiny-note">Actualización automática cada 30 segundos.</div>
+  <div id="msgDashboard" class="message"></div>
+</section>
 
    <section class="panel" id="panel-taquilla">
   <div class="taquilla-hero">
