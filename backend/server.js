@@ -61,6 +61,28 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+function aplicarNoCache(res) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+}
+
+app.use((req, res, next) => {
+    const rutasNoCache = [
+        '/admin.html',
+        '/lector.html',
+        '/panel-login',
+        '/panel-logout'
+    ];
+
+    if (rutasNoCache.includes(req.path)) {
+        aplicarNoCache(res);
+    }
+
+    next();
+});
+
 app.use('/qrs', express.static(QR_DIR));
 
 app.use((req, res, next) => {
@@ -396,8 +418,9 @@ function requirePanelAuth(req, res, next) {
         });
     }
 
-    req.panelUser = session;
-    next();
+   req.panelUser = session;
+aplicarNoCache(res);
+next();
 }
 
 function extraerNombreCategoria(textoEntrada) {
@@ -816,10 +839,33 @@ async function registrarAcceso({
 }
 
 // ============================================
-// 🔐 LOGIN SIMPLE DEL PANEL
+// 🔐 LOGIN DEL PANEL PERSONALIZADO
 // ============================================
+function escapeHtml(valor) {
+    return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function sanitizarNextUrl(valor) {
+    const nextUrl = String(valor || '/admin.html');
+
+    if (!nextUrl.startsWith('/') || nextUrl.startsWith('//')) {
+        return '/admin.html';
+    }
+
+    return nextUrl;
+}
+
 app.get('/panel-login', (req, res) => {
-    const nextUrl = String(req.query.next || '/admin.html');
+    aplicarNoCache(res);
+
+    const nextUrl = sanitizarNextUrl(req.query.next || '/admin.html');
+    const hayError = Boolean(req.query.error);
+    const logout = Boolean(req.query.logout);
 
     res.send(`
         <!DOCTYPE html>
@@ -827,159 +873,316 @@ app.get('/panel-login', (req, res) => {
         <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Acceso al panel</title>
+            <title>Zoológico La Trinitaria Chiapas - Login</title>
             <style>
-                * { box-sizing: border-box; font-family: Segoe UI, Arial, sans-serif; }
+                * {
+                    box-sizing: border-box;
+                    font-family: "Segoe UI", Arial, sans-serif;
+                }
+
                 body {
                     margin: 0;
                     min-height: 100vh;
                     display: grid;
                     place-items: center;
-                    background: linear-gradient(145deg, #1b4d3d 0%, #2d6a4f 100%);
                     padding: 20px;
+                    background:
+                        linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.65)),
+                        url('/img/max.jpg') center center / cover no-repeat fixed;
+                    color: white;
+                    overflow: hidden;
                 }
-                .card {
+
+                .login-card {
                     width: 100%;
-                    max-width: 420px;
-                    background: white;
-                    border-radius: 24px;
+                    max-width: 370px;
+                    min-height: 470px;
+                    background: rgba(28, 18, 12, 0.58);
+                    border: 1px solid rgba(255,255,255,.22);
+                    border-radius: 16px;
                     padding: 28px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,.25);
-                    border: 2px solid #f9b81b;
+                    box-shadow: 0 24px 55px rgba(0,0,0,.45);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
                 }
+
+                .logo-wrap {
+                    text-align: center;
+                    margin-bottom: 16px;
+                }
+
+                .logo-wrap img {
+                    width: 72px;
+                    height: 72px;
+                    object-fit: contain;
+                    border-radius: 10px;
+                    background: rgba(255,255,255,.9);
+                    padding: 5px;
+                    box-shadow: 0 8px 18px rgba(0,0,0,.35);
+                }
+
                 h1 {
-                    margin: 0 0 10px;
-                    color: #283618;
-                    font-size: 1.8rem;
+                    margin: 8px 0 22px;
+                    text-align: center;
+                    color: #ffc247;
+                    font-size: 1.45rem;
+                    line-height: 1.18;
+                    text-shadow: 0 3px 10px rgba(0,0,0,.45);
                 }
-                p {
-                    color: #5f6b7a;
-                    margin: 0 0 20px;
-                }
+
                 label {
                     display: block;
-                    margin-bottom: 8px;
-                    font-weight: 700;
-                    color: #283618;
+                    margin: 12px 0 7px;
+                    font-weight: 800;
+                    color: #ffffff;
+                    font-size: .95rem;
                 }
+
                 input {
                     width: 100%;
                     padding: 12px 14px;
-                    border-radius: 14px;
-                    border: 2px solid #d4a373;
-                    margin-bottom: 16px;
-                    font-size: 1rem;
-                    outline: none;
-                }
-                input:focus {
-                    border-color: #bc6c25;
-                    box-shadow: 0 0 0 4px rgba(188,108,37,.12);
-                }
-                button[type="submit"] {
-                    width: 100%;
-                    padding: 14px;
-                    border: none;
-                    border-radius: 16px;
-                    background: linear-gradient(145deg, #2d6a4f, #1b4332);
+                    border-radius: 9px;
+                    border: 1px solid rgba(255,255,255,.35);
+                    background: rgba(255,255,255,.12);
                     color: white;
-                    font-weight: 800;
-                    font-size: 1rem;
-                    cursor: pointer;
-                    border: 2px solid #f9b81b;
+                    font-size: .96rem;
+                    outline: none;
+                    transition: .22s ease;
                 }
-                .error {
-                    background: #f8d7da;
-                    color: #721c24;
-                    border: 2px solid #dc3545;
-                    padding: 12px 14px;
-                    border-radius: 14px;
-                    margin-bottom: 16px;
-                    font-weight: 700;
-                    opacity: 1;
-                    transition: opacity .4s ease, transform .4s ease;
+
+                input::placeholder {
+                    color: rgba(255,255,255,.65);
                 }
-                .error.hide {
-                    opacity: 0;
-                    transform: translateY(-6px);
+
+                input:focus {
+                    background: rgba(255,255,255,.18);
+                    border-color: #ffc247;
+                    box-shadow: 0 0 0 4px rgba(255,194,71,.16);
                 }
+
                 .password-wrap {
                     position: relative;
-                    margin-bottom: 16px;
                 }
+
                 .password-wrap input {
-                    margin-bottom: 0;
-                    padding-right: 52px;
+                    padding-right: 48px;
                 }
+
                 .toggle-pass {
                     position: absolute;
-                    right: 10px;
+                    right: 9px;
                     top: 50%;
                     transform: translateY(-50%);
+                    width: 33px;
+                    height: 28px;
                     border: none;
-                    background: transparent;
+                    border-radius: 7px;
                     cursor: pointer;
-                    font-size: 1.15rem;
-                    padding: 6px 8px;
+                    background: rgba(255,255,255,.85);
+                    color: #111;
+                    font-weight: 900;
+                }
+
+                .btn-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr;
+                    gap: 10px;
+                    margin-top: 20px;
+                }
+
+                .btn {
+                    border: none;
+                    border-radius: 9px;
+                    padding: 12px 8px;
+                    color: white;
+                    font-weight: 900;
+                    cursor: pointer;
+                    transition: .22s ease;
+                    box-shadow: 0 8px 16px rgba(0,0,0,.28);
+                }
+
+                .btn:hover {
+                    transform: translateY(-2px);
+                }
+
+                .btn-login {
+                    background: linear-gradient(145deg, #f7931e, #d46b00);
+                }
+
+                .btn-clear {
+                    background: linear-gradient(145deg, #7f9dad, #54717f);
+                }
+
+                .btn-exit {
+                    background: linear-gradient(145deg, #d84a3a, #a92920);
+                }
+
+                .message-zone {
+                    min-height: 58px;
+                    margin-top: 14px;
+                }
+
+                .login-message {
+                    padding: 13px 14px;
                     border-radius: 10px;
-                }
-                .toggle-pass:hover {
-                    background: rgba(0,0,0,.06);
-                }
-                .hint {
-                    margin-top: 10px;
-                    font-size: .9rem;
-                    color: #5f6b7a;
+                    font-weight: 800;
                     text-align: center;
+                    animation: aparecer .25s ease;
+                }
+
+                .login-message.error {
+                    background: rgba(120, 20, 20, .62);
+                    border-left: 4px solid #ff5b5b;
+                    color: #ffecec;
+                }
+
+                .login-message.ok {
+                    background: rgba(20, 100, 55, .62);
+                    border-left: 4px solid #42d97d;
+                    color: #eafff0;
+                }
+
+                .login-message.hide {
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: .35s ease;
+                }
+
+                @keyframes aparecer {
+                    from {
+                        opacity: 0;
+                        transform: translateY(8px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    body {
+                        padding: 14px;
+                    }
+
+                    .login-card {
+                        max-width: 100%;
+                        padding: 24px 20px;
+                    }
+
+                    .btn-row {
+                        grid-template-columns: 1fr;
+                    }
                 }
             </style>
         </head>
         <body>
-            <form class="card" method="POST" action="/panel-login">
-                <h1>🔐 Acceso al panel</h1>
-                <p>Ingresa para abrir admin y lector.</p>
-
-                ${req.query.error ? `<div class="error" id="loginError">❌ Usuario o contraseña incorrectos</div>` : ''}
-
-                <input type="hidden" name="next" value="${nextUrl}">
-
-                <label>Usuario</label>
-                <input type="text" name="username" required autocomplete="username">
-
-                <label>Contraseña</label>
-                <div class="password-wrap">
-                    <input type="password" name="password" id="passwordInput" required autocomplete="current-password">
-                    <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar contraseña">👁️</button>
+            <form class="login-card" method="POST" action="/panel-login" id="loginForm" autocomplete="off">
+                <div class="logo-wrap">
+                    <img src="/img/logo2.png" alt="Logo Zoológico El Sabinal">
                 </div>
 
-                <button type="submit">Entrar</button>
-                <div class="hint">Zoológico El Sabinal · Acceso privado</div>
+                <h1>Zoológico La Trinitaria<br>Chiapas</h1>
+
+                <input type="hidden" name="next" value="${escapeHtml(nextUrl)}">
+
+                <label for="username">Username:</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Ingresa tu usuario"
+                    autocomplete="off"
+                    required
+                >
+
+                <label for="passwordInput">Password:</label>
+                <div class="password-wrap">
+                    <input
+                        type="password"
+                        id="passwordInput"
+                        name="password"
+                        placeholder="Ingresa tu contraseña"
+                        autocomplete="new-password"
+                        required
+                    >
+                    <button type="button" class="toggle-pass" id="togglePass">👁️</button>
+                </div>
+
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-login">Aceptar</button>
+                    <button type="button" class="btn btn-clear" id="btnCancelar">Cancelar</button>
+                    <button type="button" class="btn btn-exit" id="btnSalir">Salir</button>
+                </div>
+
+                <div class="message-zone" id="messageZone">
+                    ${hayError ? `<div class="login-message error" id="loginMessage">Username o Password incorrecta</div>` : ''}
+                    ${logout ? `<div class="login-message ok" id="loginMessage">Sesión cerrada correctamente</div>` : ''}
+                </div>
             </form>
 
             <script>
+                const form = document.getElementById('loginForm');
+                const username = document.getElementById('username');
                 const passwordInput = document.getElementById('passwordInput');
                 const togglePass = document.getElementById('togglePass');
+                const btnCancelar = document.getElementById('btnCancelar');
+                const btnSalir = document.getElementById('btnSalir');
+                const loginMessage = document.getElementById('loginMessage');
 
                 if (togglePass && passwordInput) {
-                    togglePass.addEventListener('click', function () {
+                    togglePass.addEventListener('click', () => {
                         const visible = passwordInput.type === 'text';
                         passwordInput.type = visible ? 'password' : 'text';
                         togglePass.textContent = visible ? '👁️' : '🙈';
-                        togglePass.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
                     });
                 }
 
-                const loginError = document.getElementById('loginError');
-                if (loginError) {
+                if (btnCancelar) {
+                    btnCancelar.addEventListener('click', () => {
+                        username.value = '';
+                        passwordInput.value = '';
+                        username.focus();
+
+                        if (loginMessage) {
+                            loginMessage.classList.add('hide');
+                            setTimeout(() => loginMessage.remove(), 350);
+                        }
+                    });
+                }
+
+                if (btnSalir) {
+                    btnSalir.addEventListener('click', () => {
+                        window.location.href = '/';
+                    });
+                }
+
+                if (loginMessage) {
+                    username.value = '';
+                    passwordInput.value = '';
+
                     setTimeout(() => {
-                        loginError.classList.add('hide');
+                        loginMessage.classList.add('hide');
                     }, 3000);
 
                     setTimeout(() => {
-                        if (loginError && loginError.parentNode) {
-                            loginError.parentNode.removeChild(loginError);
+                        if (loginMessage && loginMessage.parentNode) {
+                            loginMessage.remove();
                         }
-                    }, 3600);
+
+                        username.value = '';
+                        passwordInput.value = '';
+                        username.focus();
+
+                        const limpio = '/panel-login?next=' + encodeURIComponent(${JSON.stringify(nextUrl)});
+                        window.history.replaceState({}, document.title, limpio);
+                    }, 3400);
                 }
+
+                window.addEventListener('pageshow', function (event) {
+                    if (event.persisted) {
+                        window.location.reload();
+                    }
+                });
             <\/script>
         </body>
         </html>
@@ -987,27 +1190,30 @@ app.get('/panel-login', (req, res) => {
 });
 
 app.post('/panel-login', (req, res) => {
+    aplicarNoCache(res);
+
     const username = String(req.body.username || '').trim();
     const password = String(req.body.password || '');
-    const nextUrl = String(req.body.next || '/admin.html');
+    const nextUrl = sanitizarNextUrl(req.body.next || '/admin.html');
 
     if (username !== PANEL_USER || password !== PANEL_PASS) {
         return res.redirect(`/panel-login?error=1&next=${encodeURIComponent(nextUrl)}`);
     }
 
     const session = crearPanelSession(username);
+    const cookieSecure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
 
- const cookieSecure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-
-res.setHeader(
-    'Set-Cookie',
-    `panel_session=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${PANEL_SESSION_HOURS * 60 * 60}${cookieSecure}`
-);
+    res.setHeader(
+        'Set-Cookie',
+        `panel_session=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${PANEL_SESSION_HOURS * 60 * 60}${cookieSecure}`
+    );
 
     return res.redirect(nextUrl);
 });
 
 app.get('/panel-logout', (req, res) => {
+    aplicarNoCache(res);
+
     const cookies = parseCookies(req);
     const token = cookies.panel_session;
 
@@ -1016,11 +1222,20 @@ app.get('/panel-logout', (req, res) => {
     }
 
     const cookieSecure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-res.setHeader('Set-Cookie', `panel_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${cookieSecure}`);
-    res.redirect('/panel-login');
+
+    res.setHeader(
+        'Set-Cookie',
+        `panel_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${cookieSecure}`
+    );
+
+    res.setHeader('Clear-Site-Data', '"cache"');
+
+    return res.redirect('/panel-login?logout=1');
 });
 
 app.get('/api/panel-me', requirePanelAuth, (req, res) => {
+    aplicarNoCache(res);
+
     res.json({
         success: true,
         user: {
