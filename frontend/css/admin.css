@@ -1315,3 +1315,27 @@
     grid-template-columns: 1fr;
   }
 }
+.promo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.btn-sm {
+  padding: 9px 12px;
+  font-size: 0.85rem;
+  border-radius: 12px;
+}
+
+@media (max-width: 700px) {
+  .promo-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: auto;
+  }
+
+  .promo-actions .btn {
+    flex: 1;
+  }
+}

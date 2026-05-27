@@ -1480,6 +1480,163 @@ app.post('/api/promociones/:id/toggle', async (req, res) => {
         });
     }
 });
+// ============================================
+// ✏️ EDITAR PROMOCIÓN
+// ============================================
+app.put('/api/promociones/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de promoción no válido'
+            });
+        }
+
+        const {
+            nombre,
+            descripcion = '',
+            categoria_id = null,
+            dia_semana = null,
+            fecha_inicio,
+            fecha_fin
+        } = req.body || {};
+
+        if (!nombre || !fecha_inicio || !fecha_fin) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre, fecha inicial y fecha final son obligatorios'
+            });
+        }
+
+        if (fecha_inicio > fecha_fin) {
+            return res.status(400).json({
+                success: false,
+                message: 'La fecha inicial no puede ser mayor que la fecha final'
+            });
+        }
+
+        const [existe] = await pool.query(`
+            SELECT id
+            FROM promociones
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!existe.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Promoción no encontrada'
+            });
+        }
+
+        await pool.query(`
+            UPDATE promociones
+            SET
+                nombre = ?,
+                descripcion = ?,
+                tipo = '2x1',
+                canal = 'web',
+                categoria_id = ?,
+                dia_semana = ?,
+                fecha_inicio = ?,
+                fecha_fin = ?
+            WHERE id = ?
+        `, [
+            nombre,
+            descripcion || null,
+            categoria_id ? Number(categoria_id) : null,
+            dia_semana ? Number(dia_semana) : null,
+            fecha_inicio,
+            fecha_fin,
+            id
+        ]);
+
+        res.json({
+            success: true,
+            message: '✅ Promoción actualizada correctamente'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error actualizando promoción',
+            error: error.message
+        });
+    }
+});
+
+// ============================================
+// 🗑️ ELIMINAR PROMOCIÓN SEGURA
+// Si ya fue usada en ventas, solo se desactiva.
+// Si no fue usada, sí se elimina.
+// ============================================
+app.delete('/api/promociones/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de promoción no válido'
+            });
+        }
+
+        const [promoRows] = await pool.query(`
+            SELECT id, nombre
+            FROM promociones
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!promoRows.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Promoción no encontrada'
+            });
+        }
+
+        const [usoRows] = await pool.query(`
+            SELECT COUNT(*) AS total_usos
+            FROM ventas
+            WHERE promocion_id = ?
+        `, [id]);
+
+        const totalUsos = Number(usoRows[0]?.total_usos || 0);
+
+        if (totalUsos > 0) {
+            await pool.query(`
+                UPDATE promociones
+                SET activo = 0
+                WHERE id = ?
+            `, [id]);
+
+            return res.json({
+                success: true,
+                message: '✅ La promoción ya fue usada en ventas, por seguridad solo se desactivó.',
+                modo: 'desactivada',
+                total_usos: totalUsos
+            });
+        }
+
+        await pool.query(`
+            DELETE FROM promociones
+            WHERE id = ?
+        `, [id]);
+
+        res.json({
+            success: true,
+            message: '✅ Promoción eliminada correctamente',
+            modo: 'eliminada'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error eliminando promoción',
+            error: error.message
+        });
+    }
+});
 
 // ============================================
 // 🎯 PROMOCIONES PÚBLICAS WEB

@@ -462,6 +462,9 @@ async function cargarCategoriasTaquilla() {
     setMessage('msgTaquilla', '❌ ' + error.message, 'error');
   }
 }
+let promocionesCache = [];
+let promoEditandoId = null;
+
 function nombreDiaPromo(valor) {
   const mapa = {
     1: 'Domingo',
@@ -476,6 +479,10 @@ function nombreDiaPromo(valor) {
   return mapa[Number(valor)] || 'Todos los días';
 }
 
+function fechaCorta(valor) {
+  return valor ? String(valor).slice(0, 10) : '';
+}
+
 async function cargarPromociones() {
   const lista = document.getElementById('listaPromociones');
   if (!lista) return;
@@ -488,29 +495,41 @@ async function cargarPromociones() {
       throw new Error(data.message || 'No se pudieron cargar promociones');
     }
 
-    if (!data.promociones.length) {
+    promocionesCache = data.promociones || [];
+
+    if (!promocionesCache.length) {
       lista.innerHTML = '<div class="tiny-note">Aún no hay promociones registradas.</div>';
       return;
     }
 
-    lista.innerHTML = data.promociones.map(p => `
+    lista.innerHTML = promocionesCache.map(p => `
       <div class="promo-card ${Number(p.activo) === 1 ? 'activa' : 'inactiva'}">
         <div>
           <h4>${p.nombre}</h4>
           <p>${p.descripcion || 'Sin descripción'}</p>
+
           <p>
             <span class="promo-badge ok">${p.tipo}</span>
             <span class="promo-badge warn">${p.canal === 'web' ? 'Solo web' : p.canal}</span>
           </p>
-          <p><strong>Vigencia:</strong> ${String(p.fecha_inicio).slice(0,10)} al ${String(p.fecha_fin).slice(0,10)}</p>
+
+          <p><strong>Vigencia:</strong> ${fechaCorta(p.fecha_inicio)} al ${fechaCorta(p.fecha_fin)}</p>
           <p><strong>Día:</strong> ${nombreDiaPromo(p.dia_semana)}</p>
           <p><strong>Categoría:</strong> ${p.categoria_nombre || 'Todas'}</p>
           <p><strong>Estado:</strong> ${Number(p.activo) === 1 ? 'Activa ✅' : 'Inactiva ⏸️'}</p>
         </div>
 
-        <div>
-          <button class="btn ${Number(p.activo) === 1 ? 'btn-danger' : 'btn-primary'}" onclick="togglePromocion(${p.id})">
+        <div class="promo-actions">
+          <button class="btn btn-outline btn-sm" onclick="editarPromocion(${p.id})">
+            ✏️ Modificar
+          </button>
+
+          <button class="btn ${Number(p.activo) === 1 ? 'btn-danger' : 'btn-primary'} btn-sm" onclick="togglePromocion(${p.id})">
             ${Number(p.activo) === 1 ? 'Desactivar' : 'Activar'}
+          </button>
+
+          <button class="btn btn-danger btn-sm" onclick="eliminarPromocion(${p.id})">
+            🗑️ Eliminar
           </button>
         </div>
       </div>
@@ -522,6 +541,11 @@ async function cargarPromociones() {
 }
 
 function limpiarFormularioPromo() {
+  promoEditandoId = null;
+
+  const editId = document.getElementById('promoEditId');
+  if (editId) editId.value = '';
+
   document.getElementById('promoNombre').value = '';
   document.getElementById('promoCategoria').value = '';
   document.getElementById('promoDia').value = '';
@@ -531,11 +555,52 @@ function limpiarFormularioPromo() {
   document.getElementById('promoInicio').value = hoy;
   document.getElementById('promoFin').value = hoy;
 
+  const btn = document.getElementById('btnGuardarPromo');
+  if (btn) {
+    btn.textContent = 'Guardar promoción';
+  }
+
   clearMessage('msgPromos');
+}
+
+function editarPromocion(id) {
+  const promo = promocionesCache.find(p => Number(p.id) === Number(id));
+
+  if (!promo) {
+    setMessage('msgPromos', '❌ No se encontró la promoción para editar.', 'error');
+    return;
+  }
+
+  promoEditandoId = Number(id);
+
+  const editId = document.getElementById('promoEditId');
+  if (editId) editId.value = String(id);
+
+  document.getElementById('promoNombre').value = promo.nombre || '';
+  document.getElementById('promoCategoria').value = promo.categoria_id || '';
+  document.getElementById('promoDia').value = promo.dia_semana || '';
+  document.getElementById('promoInicio').value = fechaCorta(promo.fecha_inicio);
+  document.getElementById('promoFin').value = fechaCorta(promo.fecha_fin);
+  document.getElementById('promoDescripcion').value = promo.descripcion || '';
+
+  const btn = document.getElementById('btnGuardarPromo');
+  if (btn) {
+    btn.textContent = 'Actualizar promoción';
+  }
+
+  setMessage('msgPromos', '✏️ Editando promoción. Modifica los datos y presiona “Actualizar promoción”.', 'ok');
+
+  const panel = document.getElementById('panel-promociones');
+  if (panel) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 async function guardarPromocion() {
   clearMessage('msgPromos');
+
+  const editId = document.getElementById('promoEditId')?.value || '';
+  const idEditar = promoEditandoId || (editId ? Number(editId) : null);
 
   const nombre = document.getElementById('promoNombre').value.trim();
   const categoria_id = document.getElementById('promoCategoria').value || null;
@@ -549,9 +614,20 @@ async function guardarPromocion() {
     return;
   }
 
+  if (fecha_inicio > fecha_fin) {
+    setMessage('msgPromos', '❌ La fecha inicial no puede ser mayor que la fecha final.', 'error');
+    return;
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/api/promociones`, {
-      method: 'POST',
+    const url = idEditar
+      ? `${API_BASE}/api/promociones/${idEditar}`
+      : `${API_BASE}/api/promociones`;
+
+    const method = idEditar ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nombre,
@@ -572,7 +648,12 @@ async function guardarPromocion() {
       throw new Error(data.message || 'No se pudo guardar la promoción');
     }
 
-    setMessage('msgPromos', '✅ Promoción guardada correctamente.', 'ok');
+    setMessage(
+      'msgPromos',
+      idEditar ? '✅ Promoción actualizada correctamente.' : '✅ Promoción guardada correctamente.',
+      'ok'
+    );
+
     limpiarFormularioPromo();
     await cargarPromociones();
   } catch (error) {
@@ -590,6 +671,39 @@ async function togglePromocion(id) {
 
     if (!res.ok || !data.success) {
       throw new Error(data.message || 'No se pudo cambiar el estado');
+    }
+
+    await cargarPromociones();
+  } catch (error) {
+    setMessage('msgPromos', '❌ ' + error.message, 'error');
+  }
+}
+
+async function eliminarPromocion(id) {
+  const promo = promocionesCache.find(p => Number(p.id) === Number(id));
+  const nombre = promo ? promo.nombre : 'esta promoción';
+
+  const confirmado = confirm(
+    `¿Seguro que deseas eliminar "${nombre}"?\n\nSi ya fue usada en ventas, el sistema solo la desactivará para no romper el historial.`
+  );
+
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/promociones/${id}`, {
+      method: 'DELETE'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudo eliminar la promoción');
+    }
+
+    setMessage('msgPromos', data.message || '✅ Promoción procesada correctamente.', 'ok');
+
+    if (Number(id) === Number(promoEditandoId)) {
+      limpiarFormularioPromo();
     }
 
     await cargarPromociones();
@@ -1711,6 +1825,8 @@ document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVe
 document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPromocion);
 document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
 document.getElementById('btnRegistrarEntrada').addEventListener('click', registrarEntradaManualActual);
+document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPromocion);
+document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
 
  document.addEventListener('DOMContentLoaded', async () => {
   const ok = await verificarSesionPanel();
@@ -1728,6 +1844,9 @@ await cargarCategoriasTaquilla();
 
 cargarCategoriasPromos();
 limpiarFormularioPromo();
+await cargarPromociones();
+
+cargarCategoriasPromos();
 await cargarPromociones();
 
 await cargarDashboard();
