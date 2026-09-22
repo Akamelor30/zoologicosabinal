@@ -1405,6 +1405,13 @@ app.use('/api/bi-dashboard', requirePanelAuth);
 app.use('/api/test-email', requirePanelAuth);
 app.use('/api/promociones', requirePanelAuth);
 app.use('/api/animales-admin', requirePanelAuth);
+// ============================================
+// 🐾 MÓDULO DE CONTROL DE EJEMPLARES
+// ============================================
+app.use('/api/ejemplares', requirePanelAuth);
+app.use('/api/reportes-animales', requirePanelAuth);
+app.use('/api/bajas-animales', requirePanelAuth);
+app.use('/api/dashboard-animales', requirePanelAuth);
 
 app.use(/^\/api\/ventas\/[^/]+\/cancelar$/, requirePanelAuth);
 app.use(/^\/api\/ventas\/[^/]+\/confirmar-pago$/, requirePanelAuth);
@@ -1779,6 +1786,837 @@ app.delete('/api/animales-admin/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error eliminando animal',
+            error: error.message
+        });
+    }
+});
+// ==========================================================
+// 🐾 MÓDULO DE CONTROL Y SEGUIMIENTO DE EJEMPLARES
+// Zoológico El Sabinal
+// ==========================================================
+
+
+// ==========================================================
+// 📊 DASHBOARD DE ANIMALES
+// ==========================================================
+app.get('/api/dashboard-animales', async (req, res) => {
+    try {
+        const [resumenRows] = await pool.query(`
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(estado_actual = 'activo'), 0) AS activos,
+                COALESCE(SUM(estado_actual = 'observacion'), 0) AS observacion,
+                COALESCE(SUM(estado_actual = 'tratamiento'), 0) AS tratamiento,
+                COALESCE(SUM(estado_actual = 'trasladado'), 0) AS trasladados,
+                COALESCE(SUM(estado_actual = 'liberado'), 0) AS liberados,
+                COALESCE(SUM(estado_actual = 'fallecido'), 0) AS fallecidos
+            FROM ejemplares
+        `);
+
+        const [reportesSemanaRows] = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM reportes_animales
+            WHERE YEARWEEK(fecha_reporte, 1) = YEARWEEK(CURDATE(), 1)
+        `);
+
+        const [pendientesRows] = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM ejemplares e
+            WHERE e.estado_actual IN ('activo', 'observacion', 'tratamiento')
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM reportes_animales r
+                  WHERE r.ejemplar_id = e.id
+                    AND YEARWEEK(r.fecha_reporte, 1) = YEARWEEK(CURDATE(), 1)
+              )
+        `);
+
+        const resumen = resumenRows[0] || {};
+
+        res.json({
+            success: true,
+            resumen: {
+                total: Number(resumen.total || 0),
+                activos: Number(resumen.activos || 0),
+                observacion: Number(resumen.observacion || 0),
+                tratamiento: Number(resumen.tratamiento || 0),
+                trasladados: Number(resumen.trasladados || 0),
+                liberados: Number(resumen.liberados || 0),
+                fallecidos: Number(resumen.fallecidos || 0),
+                reportes_semana: Number(reportesSemanaRows[0]?.total || 0),
+                reportes_pendientes: Number(pendientesRows[0]?.total || 0)
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo el resumen de animales',
+            error: error.message
+        });
+    }
+});
+
+
+// ==========================================================
+// 🐯 LISTAR TODOS LOS EJEMPLARES
+// ==========================================================
+app.get('/api/ejemplares', async (req, res) => {
+    try {
+        const estado = String(req.query.estado || '').trim();
+        const buscar = String(req.query.buscar || '').trim();
+
+        const condiciones = [];
+        const valores = [];
+
+        if (estado) {
+            condiciones.push('e.estado_actual = ?');
+            valores.push(estado);
+        }
+
+        if (buscar) {
+            condiciones.push(`
+                (
+                    e.codigo LIKE ?
+                    OR e.nombre LIKE ?
+                    OR e.especie LIKE ?
+                    OR e.nombre_cientifico LIKE ?
+                )
+            `);
+
+            const termino = `%${buscar}%`;
+
+            valores.push(
+                termino,
+                termino,
+                termino,
+                termino
+            );
+        }
+
+        const where = condiciones.length
+            ? `WHERE ${condiciones.join(' AND ')}`
+            : '';
+
+        const [rows] = await pool.query(`
+            SELECT
+                e.*,
+
+                (
+                    SELECT MAX(r.fecha_reporte)
+                    FROM reportes_animales r
+                    WHERE r.ejemplar_id = e.id
+                ) AS ultimo_reporte,
+
+                (
+                    SELECT COUNT(*)
+                    FROM reportes_animales r
+                    WHERE r.ejemplar_id = e.id
+                ) AS total_reportes
+
+            FROM ejemplares e
+
+            ${where}
+
+            ORDER BY
+                e.activo DESC,
+                e.fecha_llegada DESC,
+                e.nombre ASC
+        `, valores);
+
+        res.json({
+            success: true,
+            total: rows.length,
+            ejemplares: rows
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo los ejemplares',
+            error: error.message
+        });
+    }
+});
+
+
+// ==========================================================
+// 🔎 OBTENER UN EJEMPLAR Y SU EXPEDIENTE
+// ==========================================================
+app.get('/api/ejemplares/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de ejemplar no válido'
+            });
+        }
+
+        const [ejemplares] = await pool.query(`
+            SELECT *
+            FROM ejemplares
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!ejemplares.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ejemplar no encontrado'
+            });
+        }
+
+        const [reportes] = await pool.query(`
+            SELECT *
+            FROM reportes_animales
+            WHERE ejemplar_id = ?
+            ORDER BY fecha_reporte DESC, id DESC
+        `, [id]);
+
+        const [bajas] = await pool.query(`
+            SELECT *
+            FROM bajas_animales
+            WHERE ejemplar_id = ?
+            ORDER BY fecha_baja DESC, id DESC
+        `, [id]);
+
+        res.json({
+            success: true,
+            ejemplar: ejemplares[0],
+            reportes,
+            bajas
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo el expediente del animal',
+            error: error.message
+        });
+    }
+});
+
+
+// ==========================================================
+// ➕ REGISTRAR NUEVO EJEMPLAR
+// ==========================================================
+app.post('/api/ejemplares', async (req, res) => {
+    try {
+        const {
+            nombre,
+            especie,
+            nombre_cientifico = null,
+            sexo = 'desconocido',
+            fecha_nacimiento = null,
+            edad_aproximada = null,
+            fecha_llegada,
+            procedencia = null,
+            habitat_asignado = null,
+            alimentacion = null,
+            condicion_ingreso = null,
+            descripcion = null,
+            imagen_url = null
+        } = req.body || {};
+
+        if (!nombre || !especie || !fecha_llegada) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre, especie y fecha de llegada son obligatorios'
+            });
+        }
+
+        const sexosPermitidos = [
+            'macho',
+            'hembra',
+            'desconocido'
+        ];
+
+        if (!sexosPermitidos.includes(sexo)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Sexo del animal no válido'
+            });
+        }
+
+        // Primero guardamos temporalmente un código único.
+        const codigoTemporal =
+            `TEMP-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+
+        const [result] = await pool.query(`
+            INSERT INTO ejemplares
+            (
+                codigo,
+                nombre,
+                especie,
+                nombre_cientifico,
+                sexo,
+                fecha_nacimiento,
+                edad_aproximada,
+                fecha_llegada,
+                procedencia,
+                habitat_asignado,
+                alimentacion,
+                estado_actual,
+                condicion_ingreso,
+                descripcion,
+                imagen_url,
+                activo
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, ?, 1)
+        `, [
+            codigoTemporal,
+            String(nombre).trim(),
+            String(especie).trim(),
+            nombre_cientifico
+                ? String(nombre_cientifico).trim()
+                : null,
+            sexo,
+            fecha_nacimiento || null,
+            edad_aproximada
+                ? String(edad_aproximada).trim()
+                : null,
+            fecha_llegada,
+            procedencia
+                ? String(procedencia).trim()
+                : null,
+            habitat_asignado
+                ? String(habitat_asignado).trim()
+                : null,
+            alimentacion
+                ? String(alimentacion).trim()
+                : null,
+            condicion_ingreso
+                ? String(condicion_ingreso).trim()
+                : null,
+            descripcion
+                ? String(descripcion).trim()
+                : null,
+            imagen_url
+                ? String(imagen_url).trim()
+                : null
+        ]);
+
+        const id = Number(result.insertId);
+
+        // ANI-0001, ANI-0002...
+        const codigo =
+            `ANI-${String(id).padStart(4, '0')}`;
+
+        await pool.query(`
+            UPDATE ejemplares
+            SET codigo = ?
+            WHERE id = ?
+        `, [codigo, id]);
+
+        res.json({
+            success: true,
+            message: '✅ Ejemplar registrado correctamente',
+            ejemplar: {
+                id,
+                codigo
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error registrando el ejemplar',
+            error: error.message
+        });
+    }
+});
+
+
+// ==========================================================
+// ✏️ EDITAR DATOS DE UN EJEMPLAR
+// ==========================================================
+app.put('/api/ejemplares/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de ejemplar no válido'
+            });
+        }
+
+        const {
+            nombre,
+            especie,
+            nombre_cientifico = null,
+            sexo = 'desconocido',
+            fecha_nacimiento = null,
+            edad_aproximada = null,
+            fecha_llegada,
+            procedencia = null,
+            habitat_asignado = null,
+            alimentacion = null,
+            condicion_ingreso = null,
+            descripcion = null,
+            imagen_url = null
+        } = req.body || {};
+
+        if (!nombre || !especie || !fecha_llegada) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre, especie y fecha de llegada son obligatorios'
+            });
+        }
+
+        const [existe] = await pool.query(`
+            SELECT id
+            FROM ejemplares
+            WHERE id = ?
+            LIMIT 1
+        `, [id]);
+
+        if (!existe.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ejemplar no encontrado'
+            });
+        }
+
+        await pool.query(`
+            UPDATE ejemplares
+            SET
+                nombre = ?,
+                especie = ?,
+                nombre_cientifico = ?,
+                sexo = ?,
+                fecha_nacimiento = ?,
+                edad_aproximada = ?,
+                fecha_llegada = ?,
+                procedencia = ?,
+                habitat_asignado = ?,
+                alimentacion = ?,
+                condicion_ingreso = ?,
+                descripcion = ?,
+                imagen_url = ?
+            WHERE id = ?
+        `, [
+            String(nombre).trim(),
+            String(especie).trim(),
+            nombre_cientifico || null,
+            sexo,
+            fecha_nacimiento || null,
+            edad_aproximada || null,
+            fecha_llegada,
+            procedencia || null,
+            habitat_asignado || null,
+            alimentacion || null,
+            condicion_ingreso || null,
+            descripcion || null,
+            imagen_url || null,
+            id
+        ]);
+
+        res.json({
+            success: true,
+            message: '✅ Datos del ejemplar actualizados'
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error actualizando el ejemplar',
+            error: error.message
+        });
+    }
+});
+
+
+// ==========================================================
+// 📋 CREAR REPORTE SEMANAL
+// ==========================================================
+app.post('/api/reportes-animales', async (req, res) => {
+    try {
+        const {
+            ejemplar_id,
+            fecha_reporte,
+            condicion_general = 'buena',
+            alimentacion = 'normal',
+            comportamiento = 'normal',
+            peso = null,
+            observaciones = null,
+            recomendaciones = null,
+            responsable,
+            imagen_url = null
+        } = req.body || {};
+
+        const ejemplarId = Number(ejemplar_id);
+
+        if (
+            !Number.isInteger(ejemplarId) ||
+            ejemplarId <= 0 ||
+            !fecha_reporte ||
+            !responsable
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ejemplar, fecha y responsable son obligatorios'
+            });
+        }
+
+        const [ejemplarRows] = await pool.query(`
+            SELECT id, codigo, nombre, estado_actual
+            FROM ejemplares
+            WHERE id = ?
+            LIMIT 1
+        `, [ejemplarId]);
+
+        if (!ejemplarRows.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ejemplar no encontrado'
+            });
+        }
+
+        const ejemplar = ejemplarRows[0];
+
+        if (
+            ['fallecido', 'trasladado', 'liberado']
+                .includes(ejemplar.estado_actual)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    'No se pueden registrar reportes semanales para un ejemplar dado de baja'
+            });
+        }
+
+        // Evitar dos reportes para el mismo animal
+        // dentro de la misma semana.
+        const [duplicados] = await pool.query(`
+            SELECT id
+            FROM reportes_animales
+            WHERE ejemplar_id = ?
+              AND YEARWEEK(fecha_reporte, 1)
+                  = YEARWEEK(?, 1)
+            LIMIT 1
+        `, [
+            ejemplarId,
+            fecha_reporte
+        ]);
+
+        if (duplicados.length) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Este animal ya tiene un reporte registrado para esa semana'
+            });
+        }
+
+        const [semanaRows] = await pool.query(`
+            SELECT WEEK(?, 1) AS numero_semana
+        `, [fecha_reporte]);
+
+        const numeroSemana =
+            Number(semanaRows[0]?.numero_semana || 0);
+
+        const [result] = await pool.query(`
+            INSERT INTO reportes_animales
+            (
+                ejemplar_id,
+                fecha_reporte,
+                numero_semana,
+                condicion_general,
+                alimentacion,
+                comportamiento,
+                peso,
+                observaciones,
+                recomendaciones,
+                responsable,
+                imagen_url
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            ejemplarId,
+            fecha_reporte,
+            numeroSemana,
+            condicion_general,
+            alimentacion,
+            comportamiento,
+            peso === '' || peso === null
+                ? null
+                : Number(peso),
+            observaciones || null,
+            recomendaciones || null,
+            String(responsable).trim(),
+            imagen_url || null
+        ]);
+
+        // También actualizamos automáticamente
+        // el estado general del ejemplar.
+        let nuevoEstado = 'activo';
+
+        if (condicion_general === 'observacion') {
+            nuevoEstado = 'observacion';
+        }
+
+        if (condicion_general === 'tratamiento') {
+            nuevoEstado = 'tratamiento';
+        }
+
+        await pool.query(`
+            UPDATE ejemplares
+            SET estado_actual = ?
+            WHERE id = ?
+        `, [
+            nuevoEstado,
+            ejemplarId
+        ]);
+
+        res.json({
+            success: true,
+            message: '✅ Reporte semanal registrado correctamente',
+            id: result.insertId,
+            numero_semana: numeroSemana
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error registrando el reporte semanal',
+            error: error.message
+        });
+    }
+});
+
+
+// ==========================================================
+// 📚 REPORTES DE UN EJEMPLAR
+// ==========================================================
+app.get(
+    '/api/reportes-animales/ejemplar/:ejemplarId',
+    async (req, res) => {
+        try {
+            const ejemplarId =
+                Number(req.params.ejemplarId);
+
+            if (
+                !Number.isInteger(ejemplarId) ||
+                ejemplarId <= 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID de ejemplar no válido'
+                });
+            }
+
+            const [rows] = await pool.query(`
+                SELECT *
+                FROM reportes_animales
+                WHERE ejemplar_id = ?
+                ORDER BY fecha_reporte DESC, id DESC
+            `, [ejemplarId]);
+
+            res.json({
+                success: true,
+                total: rows.length,
+                reportes: rows
+            });
+
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Error obteniendo reportes',
+                error: error.message
+            });
+        }
+    }
+);
+
+
+// ==========================================================
+// 🚨 REGISTRAR BAJA
+// Fallecimiento / traslado / liberación / otra
+// ==========================================================
+app.post('/api/bajas-animales', async (req, res) => {
+    const conn = await pool.getConnection();
+
+    try {
+        const {
+            ejemplar_id,
+            tipo_baja,
+            fecha_baja,
+            motivo,
+            descripcion = null,
+            destino_traslado = null,
+            responsable,
+            documento_url = null
+        } = req.body || {};
+
+        const ejemplarId = Number(ejemplar_id);
+
+        const tiposPermitidos = [
+            'fallecimiento',
+            'traslado',
+            'liberacion',
+            'otra'
+        ];
+
+        if (
+            !Number.isInteger(ejemplarId) ||
+            ejemplarId <= 0 ||
+            !tiposPermitidos.includes(tipo_baja) ||
+            !fecha_baja ||
+            !motivo ||
+            !responsable
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Ejemplar, tipo de baja, fecha, motivo y responsable son obligatorios'
+            });
+        }
+
+        await conn.beginTransaction();
+
+        const [ejemplarRows] = await conn.query(`
+            SELECT
+                id,
+                codigo,
+                nombre,
+                estado_actual
+            FROM ejemplares
+            WHERE id = ?
+            LIMIT 1
+            FOR UPDATE
+        `, [ejemplarId]);
+
+        if (!ejemplarRows.length) {
+            await conn.rollback();
+
+            return res.status(404).json({
+                success: false,
+                message: 'Ejemplar no encontrado'
+            });
+        }
+
+        const ejemplar = ejemplarRows[0];
+
+        if (
+            ['fallecido', 'trasladado', 'liberado']
+                .includes(ejemplar.estado_actual)
+        ) {
+            await conn.rollback();
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Este ejemplar ya fue dado de baja anteriormente'
+            });
+        }
+
+        const [result] = await conn.query(`
+            INSERT INTO bajas_animales
+            (
+                ejemplar_id,
+                tipo_baja,
+                fecha_baja,
+                motivo,
+                descripcion,
+                destino_traslado,
+                responsable,
+                documento_url
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            ejemplarId,
+            tipo_baja,
+            fecha_baja,
+            String(motivo).trim(),
+            descripcion || null,
+            destino_traslado || null,
+            String(responsable).trim(),
+            documento_url || null
+        ]);
+
+        let estadoNuevo = 'activo';
+
+        if (tipo_baja === 'fallecimiento') {
+            estadoNuevo = 'fallecido';
+        } else if (tipo_baja === 'traslado') {
+            estadoNuevo = 'trasladado';
+        } else if (tipo_baja === 'liberacion') {
+            estadoNuevo = 'liberado';
+        } else {
+            // Una baja de tipo "otra" deja de considerarse
+            // un ejemplar activo, aunque conserve el estado.
+            estadoNuevo = ejemplar.estado_actual;
+        }
+
+        await conn.query(`
+            UPDATE ejemplares
+            SET
+                estado_actual = ?,
+                activo = 0
+            WHERE id = ?
+        `, [
+            estadoNuevo,
+            ejemplarId
+        ]);
+
+        await conn.commit();
+
+        res.json({
+            success: true,
+            message: '✅ Baja registrada correctamente',
+            id: result.insertId,
+            estado_actual: estadoNuevo
+        });
+
+    } catch (error) {
+        try {
+            await conn.rollback();
+        } catch {}
+
+        res.status(500).json({
+            success: false,
+            message: 'Error registrando la baja',
+            error: error.message
+        });
+
+    } finally {
+        conn.release();
+    }
+});
+
+
+// ==========================================================
+// 📁 HISTORIAL DE BAJAS
+// ==========================================================
+app.get('/api/bajas-animales', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT
+                b.*,
+                e.codigo,
+                e.nombre,
+                e.especie,
+                e.sexo
+            FROM bajas_animales b
+            INNER JOIN ejemplares e
+                ON e.id = b.ejemplar_id
+            ORDER BY
+                b.fecha_baja DESC,
+                b.id DESC
+        `);
+
+        res.json({
+            success: true,
+            total: rows.length,
+            bajas: rows
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo historial de bajas',
             error: error.message
         });
     }

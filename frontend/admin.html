@@ -24,6 +24,7 @@
         <button class="menu-btn" data-panel="bi">📈 BI y gráficas</button>
 <button class="menu-btn" data-panel="promociones">🎯 Promociones web</button>
 <button class="menu-btn" data-panel="animales">🐯 Animales</button>
+<button class="menu-btn" data-panel="ejemplares">🦁 Control de ejemplares</button>
        <a href="/lector.html">📷 Ir al lector QR</a>
 <a href="/">🛒 Ir a la venta pública</a>
 <a href="/panel-logout" class="logout-link">🚪 Cerrar sesión</a>
@@ -975,6 +976,985 @@
       </div>
     </div>
   </div>
+</section>
+<!-- ====================================================== -->
+<!-- 🦁 CONTROL Y SEGUIMIENTO DE EJEMPLARES -->
+<!-- ====================================================== -->
+
+<section class="panel" id="panel-ejemplares">
+
+  <div class="bi-hero">
+    <div>
+      <span class="module-kicker">Control zoológico interno</span>
+      <h3>🦁 Control y seguimiento de ejemplares</h3>
+      <p>
+        Registra ejemplares, consulta su expediente,
+        captura reportes semanales y administra las bajas.
+      </p>
+    </div>
+
+    <div class="bi-status">
+      <small>Módulo</small>
+      <strong>🐾 Control interno</strong>
+    </div>
+  </div>
+
+  <!-- ========================= -->
+  <!-- RESUMEN -->
+  <!-- ========================= -->
+
+  <div class="cards">
+
+    <div class="card">
+      <h4>🐾 Total de ejemplares</h4>
+      <div class="value" id="ejTotal">0</div>
+      <small>Ejemplares registrados</small>
+    </div>
+
+    <div class="card">
+      <h4>🟢 Activos</h4>
+      <div class="value" id="ejActivos">0</div>
+      <small>Ejemplares activos</small>
+    </div>
+
+    <div class="card">
+      <h4>🟡 En observación</h4>
+      <div class="value" id="ejObservacion">0</div>
+      <small>Requieren seguimiento</small>
+    </div>
+
+    <div class="card">
+      <h4>🩺 En tratamiento</h4>
+      <div class="value" id="ejTratamiento">0</div>
+      <small>Actualmente en tratamiento</small>
+    </div>
+
+    <div class="card">
+      <h4>📋 Reportes esta semana</h4>
+      <div class="value" id="ejReportesSemana">0</div>
+      <small>Reportes realizados</small>
+    </div>
+
+    <div class="card">
+      <h4>⚠️ Reportes pendientes</h4>
+      <div class="value" id="ejReportesPendientes">0</div>
+      <small>Ejemplares sin reporte semanal</small>
+    </div>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- BOTONES PRINCIPALES -->
+  <!-- ========================= -->
+
+  <div class="taquilla-actions">
+
+    <button
+      class="btn btn-primary"
+      id="btnNuevoEjemplar">
+      ➕ Registrar ejemplar
+    </button>
+
+    <button
+      class="btn btn-secondary"
+      id="btnActualizarEjemplares">
+      🔄 Actualizar
+    </button>
+
+    <button
+      class="btn btn-outline"
+      id="btnVerBajas">
+      📁 Historial de bajas
+    </button>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- FORMULARIO DEL EJEMPLAR -->
+  <!-- ========================= -->
+
+  <div
+    class="taquilla-card venta-form-card"
+    id="formEjemplarCard"
+    style="display:none; margin-top:20px;"
+  >
+
+    <div class="section-title-row">
+
+      <div>
+        <h4 id="tituloFormEjemplar">
+          ➕ Registrar nuevo ejemplar
+        </h4>
+
+        <p>
+          Captura la información individual del animal.
+        </p>
+      </div>
+
+      <span class="pill-soft">
+        Expediente
+      </span>
+
+      <input
+        type="hidden"
+        id="ejemplarEditId"
+        value=""
+      >
+
+    </div>
+
+
+    <div class="taquilla-grid">
+
+      <div class="field">
+        <label for="ejNombre">
+          Nombre *
+        </label>
+
+        <input
+          type="text"
+          id="ejNombre"
+          placeholder="Ej. Max"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejEspecie">
+          Especie *
+        </label>
+
+        <input
+          type="text"
+          id="ejEspecie"
+          placeholder="Ej. Tigre de Bengala"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejNombreCientifico">
+          Nombre científico
+        </label>
+
+        <input
+          type="text"
+          id="ejNombreCientifico"
+          placeholder="Ej. Panthera tigris"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejSexo">
+          Sexo
+        </label>
+
+        <select id="ejSexo">
+          <option value="desconocido">
+            Desconocido
+          </option>
+
+          <option value="macho">
+            Macho
+          </option>
+
+          <option value="hembra">
+            Hembra
+          </option>
+        </select>
+      </div>
+
+
+      <div class="field">
+        <label for="ejFechaNacimiento">
+          Fecha de nacimiento
+        </label>
+
+        <input
+          type="date"
+          id="ejFechaNacimiento"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejEdad">
+          Edad aproximada
+        </label>
+
+        <input
+          type="text"
+          id="ejEdad"
+          placeholder="Ej. 5 años"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejFechaLlegada">
+          Fecha de llegada *
+        </label>
+
+        <input
+          type="date"
+          id="ejFechaLlegada"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejProcedencia">
+          Procedencia
+        </label>
+
+        <input
+          type="text"
+          id="ejProcedencia"
+          placeholder="Ej. Rescate"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejHabitat">
+          Hábitat asignado
+        </label>
+
+        <input
+          type="text"
+          id="ejHabitat"
+          placeholder="Ej. Área de felinos"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejAlimentacion">
+          Alimentación
+        </label>
+
+        <input
+          type="text"
+          id="ejAlimentacion"
+          placeholder="Ej. Dieta carnívora"
+        >
+      </div>
+
+
+      <div class="field">
+        <label for="ejImagen">
+          Imagen
+        </label>
+
+        <input
+          type="text"
+          id="ejImagen"
+          placeholder="/img/tigre.jpg"
+        >
+      </div>
+
+
+      <div class="field field-full">
+        <label for="ejCondicionIngreso">
+          Condición de ingreso
+        </label>
+
+        <textarea
+          id="ejCondicionIngreso"
+          rows="3"
+          placeholder="Describe cómo llegó el ejemplar..."
+        ></textarea>
+      </div>
+
+
+      <div class="field field-full">
+        <label for="ejDescripcion">
+          Descripción / observaciones generales
+        </label>
+
+        <textarea
+          id="ejDescripcion"
+          rows="3"
+          placeholder="Información adicional del ejemplar..."
+        ></textarea>
+      </div>
+
+    </div>
+
+
+    <div class="taquilla-actions">
+
+      <button
+        class="btn btn-primary"
+        id="btnGuardarEjemplar">
+        💾 Guardar ejemplar
+      </button>
+
+      <button
+        class="btn btn-outline"
+        id="btnCancelarEjemplar">
+        Cancelar
+      </button>
+
+    </div>
+
+    <div
+      id="msgEjemplares"
+      class="message">
+    </div>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- BUSCADOR -->
+  <!-- ========================= -->
+
+  <div
+    class="taquilla-card"
+    style="margin-top:20px;"
+  >
+
+    <div class="section-title-row">
+
+      <div>
+        <h4>🔎 Buscar ejemplares</h4>
+
+        <p>
+          Consulta los animales registrados en el sistema.
+        </p>
+      </div>
+
+    </div>
+
+
+    <div class="filters">
+
+      <div class="field">
+
+        <label for="buscarEjemplar">
+          Buscar
+        </label>
+
+        <input
+          type="text"
+          id="buscarEjemplar"
+          placeholder="Código, nombre o especie"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="filtroEstadoEjemplar">
+          Estado
+        </label>
+
+        <select id="filtroEstadoEjemplar">
+
+          <option value="">
+            Todos
+          </option>
+
+          <option value="activo">
+            Activo
+          </option>
+
+          <option value="observacion">
+            Observación
+          </option>
+
+          <option value="tratamiento">
+            Tratamiento
+          </option>
+
+          <option value="trasladado">
+            Trasladado
+          </option>
+
+          <option value="liberado">
+            Liberado
+          </option>
+
+          <option value="fallecido">
+            Fallecido
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <button
+        class="btn btn-primary"
+        id="btnBuscarEjemplar">
+        Buscar
+      </button>
+
+
+      <button
+        class="btn btn-secondary"
+        id="btnLimpiarBusquedaEjemplar">
+        Limpiar
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- TABLA DE EJEMPLARES -->
+  <!-- ========================= -->
+
+  <div
+    class="table-wrap"
+    style="margin-top:20px;"
+  >
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Especie</th>
+          <th>Sexo</th>
+          <th>Hábitat</th>
+          <th>Estado</th>
+          <th>Último reporte</th>
+          <th>Acciones</th>
+        </tr>
+
+      </thead>
+
+
+      <tbody id="tbodyEjemplares">
+
+        <tr>
+          <td colspan="8">
+            Cargando ejemplares...
+          </td>
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- REPORTE SEMANAL -->
+  <!-- ========================= -->
+
+  <div
+    class="taquilla-card"
+    id="formReporteAnimal"
+    style="display:none; margin-top:20px;"
+  >
+
+    <div class="section-title-row">
+
+      <div>
+
+        <h4>
+          📋 Reporte semanal
+        </h4>
+
+        <p id="reporteAnimalNombre">
+          Selecciona un ejemplar.
+        </p>
+
+      </div>
+
+      <span class="pill-soft">
+        Seguimiento
+      </span>
+
+    </div>
+
+
+    <input
+      type="hidden"
+      id="reporteEjemplarId"
+    >
+
+
+    <div class="taquilla-grid">
+
+      <div class="field">
+
+        <label for="reporteFecha">
+          Fecha *
+        </label>
+
+        <input
+          type="date"
+          id="reporteFecha"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="reporteCondicion">
+          Condición general
+        </label>
+
+        <select id="reporteCondicion">
+
+          <option value="buena">
+            Buena
+          </option>
+
+          <option value="observacion">
+            Observación
+          </option>
+
+          <option value="tratamiento">
+            Tratamiento
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="reporteAlimentacion">
+          Alimentación
+        </label>
+
+        <select id="reporteAlimentacion">
+
+          <option value="normal">
+            Normal
+          </option>
+
+          <option value="reducida">
+            Reducida
+          </option>
+
+          <option value="rechazada">
+            Rechazada
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="reporteComportamiento">
+          Comportamiento
+        </label>
+
+        <select id="reporteComportamiento">
+
+          <option value="normal">
+            Normal
+          </option>
+
+          <option value="inquieto">
+            Inquieto
+          </option>
+
+          <option value="agresivo">
+            Agresivo
+          </option>
+
+          <option value="decaido">
+            Decaído
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="reportePeso">
+          Peso (kg)
+        </label>
+
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="reportePeso"
+          placeholder="Ej. 150"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="reporteResponsable">
+          Responsable *
+        </label>
+
+        <input
+          type="text"
+          id="reporteResponsable"
+          placeholder="Nombre del encargado"
+        >
+
+      </div>
+
+
+      <div class="field field-full">
+
+        <label for="reporteObservaciones">
+          Observaciones
+        </label>
+
+        <textarea
+          id="reporteObservaciones"
+          rows="3"
+          placeholder="Estado observado durante la semana..."
+        ></textarea>
+
+      </div>
+
+
+      <div class="field field-full">
+
+        <label for="reporteRecomendaciones">
+          Recomendaciones
+        </label>
+
+        <textarea
+          id="reporteRecomendaciones"
+          rows="3"
+          placeholder="Seguimiento o recomendaciones..."
+        ></textarea>
+
+      </div>
+
+    </div>
+
+
+    <div class="taquilla-actions">
+
+      <button
+        class="btn btn-primary"
+        id="btnGuardarReporteAnimal">
+        💾 Guardar reporte
+      </button>
+
+      <button
+        class="btn btn-outline"
+        id="btnCancelarReporteAnimal">
+        Cancelar
+      </button>
+
+    </div>
+
+    <div
+      id="msgReporteAnimal"
+      class="message">
+    </div>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- EXPEDIENTE -->
+  <!-- ========================= -->
+
+  <div
+    class="taquilla-card"
+    id="expedienteAnimal"
+    style="display:none; margin-top:20px;"
+  >
+
+    <div class="section-title-row">
+
+      <div>
+        <h4>
+          📁 Expediente del ejemplar
+        </h4>
+
+        <p id="expedienteAnimalTitulo">
+          Información e historial.
+        </p>
+      </div>
+
+    </div>
+
+
+    <div
+      id="expedienteAnimalDatos"
+      class="detail-grid">
+    </div>
+
+
+    <div class="detail-list">
+
+      <strong>
+        📋 Historial de reportes
+      </strong>
+
+      <div id="historialReportesAnimal">
+        Sin reportes.
+      </div>
+
+    </div>
+
+
+    <div class="detail-list">
+
+      <strong>
+        🚨 Historial de bajas
+      </strong>
+
+      <div id="historialBajasAnimal">
+        Sin bajas registradas.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- FORMULARIO DE BAJA -->
+  <!-- ========================= -->
+
+  <div
+    class="taquilla-card"
+    id="formBajaAnimal"
+    style="display:none; margin-top:20px;"
+  >
+
+    <div class="section-title-row">
+
+      <div>
+        <h4>
+          🚨 Registrar baja
+        </h4>
+
+        <p id="bajaAnimalNombre">
+          Selecciona un ejemplar.
+        </p>
+      </div>
+
+      <span class="pill-soft">
+        Movimiento definitivo
+      </span>
+
+    </div>
+
+
+    <input
+      type="hidden"
+      id="bajaEjemplarId"
+    >
+
+
+    <div class="taquilla-grid">
+
+      <div class="field">
+
+        <label for="bajaTipo">
+          Tipo de baja *
+        </label>
+
+        <select id="bajaTipo">
+
+          <option value="fallecimiento">
+            Fallecimiento
+          </option>
+
+          <option value="traslado">
+            Traslado
+          </option>
+
+          <option value="liberacion">
+            Liberación
+          </option>
+
+          <option value="otra">
+            Otra
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="bajaFecha">
+          Fecha *
+        </label>
+
+        <input
+          type="date"
+          id="bajaFecha"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="bajaResponsable">
+          Responsable *
+        </label>
+
+        <input
+          type="text"
+          id="bajaResponsable"
+          placeholder="Nombre del responsable"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="bajaDestino">
+          Destino del traslado
+        </label>
+
+        <input
+          type="text"
+          id="bajaDestino"
+          placeholder="Solo si corresponde"
+        >
+
+      </div>
+
+
+      <div class="field field-full">
+
+        <label for="bajaMotivo">
+          Motivo *
+        </label>
+
+        <textarea
+          id="bajaMotivo"
+          rows="3"
+          placeholder="Motivo de la baja..."
+        ></textarea>
+
+      </div>
+
+
+      <div class="field field-full">
+
+        <label for="bajaDescripcion">
+          Descripción adicional
+        </label>
+
+        <textarea
+          id="bajaDescripcion"
+          rows="3"
+          placeholder="Información adicional..."
+        ></textarea>
+
+      </div>
+
+    </div>
+
+
+    <div class="taquilla-actions">
+
+      <button
+        class="btn btn-danger"
+        id="btnGuardarBajaAnimal">
+        🚨 Registrar baja
+      </button>
+
+      <button
+        class="btn btn-outline"
+        id="btnCancelarBajaAnimal">
+        Cancelar
+      </button>
+
+    </div>
+
+    <div
+      id="msgBajaAnimal"
+      class="message">
+    </div>
+
+  </div>
+
+
+  <!-- ========================= -->
+  <!-- HISTORIAL GENERAL BAJAS -->
+  <!-- ========================= -->
+
+  <div
+    class="taquilla-card"
+    id="historialBajasGeneral"
+    style="display:none; margin-top:20px;"
+  >
+
+    <div class="section-title-row">
+
+      <div>
+        <h4>
+          📁 Historial general de bajas
+        </h4>
+
+        <p>
+          Fallecimientos, traslados,
+          liberaciones y otras bajas registradas.
+        </p>
+      </div>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Fecha</th>
+            <th>Código</th>
+            <th>Ejemplar</th>
+            <th>Especie</th>
+            <th>Tipo</th>
+            <th>Motivo</th>
+            <th>Responsable</th>
+          </tr>
+
+        </thead>
+
+
+        <tbody id="tbodyBajasAnimales">
+
+          <tr>
+            <td colspan="7">
+              Sin información.
+            </td>
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
 </section>
     </main>
   </div>

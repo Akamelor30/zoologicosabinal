@@ -2425,6 +2425,7 @@ document.getElementById('btnTkVerDetalle').addEventListener('click', verDetalleT
       document.getElementById('fechaVentas').value = todayISO();
       cargarVentas();
     });
+    
     document.getElementById('btnExportarVentas').addEventListener('click', exportarVentasCSV);
 
     document.getElementById('btnAccesos').addEventListener('click', cargarAccesos);
@@ -2482,7 +2483,6 @@ document.getElementById('btnCancelarVenta').addEventListener('click', cancelarVe
 document.getElementById('btnGuardarPromo')?.addEventListener('click', guardarPromocion);
 document.getElementById('btnLimpiarPromo')?.addEventListener('click', limpiarFormularioPromo);
 document.getElementById('btnRegistrarEntrada').addEventListener('click', registrarEntradaManualActual);
-
 document.getElementById('btnGuardarAnimal')?.addEventListener('click', guardarAnimal);
 document.getElementById('btnLimpiarAnimal')?.addEventListener('click', limpiarFormularioAnimal);
 document.getElementById('animalImagen')?.addEventListener('input', actualizarPreviewAnimal);
