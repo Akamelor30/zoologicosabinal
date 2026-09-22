@@ -1833,19 +1833,31 @@ app.get('/api/dashboard-animales', async (req, res) => {
 
         const resumen = resumenRows[0] || {};
 
+        const [trasladosMesRows] = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM bajas_animales
+    WHERE tipo_baja = 'traslado'
+      AND fecha_baja >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+      AND fecha_baja < DATE_FORMAT(
+          DATE_ADD(CURDATE(), INTERVAL 1 MONTH),
+          '%Y-%m-01'
+      )
+`);
+
         res.json({
             success: true,
-            resumen: {
-                total: Number(resumen.total || 0),
-                activos: Number(resumen.activos || 0),
-                observacion: Number(resumen.observacion || 0),
-                tratamiento: Number(resumen.tratamiento || 0),
-                trasladados: Number(resumen.trasladados || 0),
-                liberados: Number(resumen.liberados || 0),
-                fallecidos: Number(resumen.fallecidos || 0),
-                reportes_semana: Number(reportesSemanaRows[0]?.total || 0),
-                reportes_pendientes: Number(pendientesRows[0]?.total || 0)
-            }
+       resumen: {
+    total: Number(resumen.total || 0),
+    activos: Number(resumen.activos || 0),
+    observacion: Number(resumen.observacion || 0),
+    tratamiento: Number(resumen.tratamiento || 0),
+    trasladados: Number(resumen.trasladados || 0),
+    traslados_mes: Number(trasladosMesRows[0]?.total || 0),
+    liberados: Number(resumen.liberados || 0),
+    fallecidos: Number(resumen.fallecidos || 0),
+    reportes_semana: Number(reportesSemanaRows[0]?.total || 0),
+    reportes_pendientes: Number(pendientesRows[0]?.total || 0)
+}
         });
 
     } catch (error) {

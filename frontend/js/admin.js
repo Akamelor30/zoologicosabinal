@@ -15,6 +15,11 @@ let chartDiasBajos = null;
 let chartPronostico = null;
 let animalesCache = [];
 let animalEditandoId = null;
+// ============================================================
+// CONTROL INTERNO DE EJEMPLARES
+// ============================================================
+let ejemplaresCache = [];
+let ejemplarSeleccionadoId = null;
 
 let ultimoBI = null;
 function mostrarUsuarioPanel(username) {
@@ -2094,36 +2099,7 @@ function imprimirCortePDF() {
       }
     }
 
-    async function exportarCorteCSV() {
-      try {
-        const fecha = document.getElementById('fechaCorte').value || todayISO();
-        const params = new URLSearchParams();
-        params.set('fecha', fecha);
 
-        const res = await fetch(`${API_BASE}/api/corte-basico?${params.toString()}`);
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || 'No se pudo exportar el corte');
-        }
-
-        const filas = [{
-          fecha: data.fecha || fecha,
-          total_operaciones: data.total_operaciones ?? 0,
-          monto_total: data.monto_total ?? 0,
-          total_efectivo: data.total_efectivo ?? 0,
-          total_tarjeta: data.total_tarjeta ?? 0,
-          total_transferencia: data.total_transferencia ?? 0,
-          total_pago_en_linea: data.total_pago_en_linea ?? 0,
-          accesos_aceptados: data.accesos_aceptados ?? 0,
-          accesos_rechazados: data.accesos_rechazados ?? 0
-        }];
-
-        descargarCSV(`corte_${fecha}.csv`, filas);
-      } catch (error) {
-        setMessage('msgCorte', '❌ ' + error.message, 'error');
-      }
-    }
 
   function limpiarBusqueda() {
   ventaActual = null;
@@ -2378,6 +2354,1017 @@ async function eliminarAnimal(id) {
     setMessage('msgAnimales', '❌ ' + error.message, 'error');
   }
 }
+// ============================================================
+// CONTROL INTERNO DE EJEMPLARES DEL ZOOLÓGICO
+// ============================================================
+
+function valorElemento(id) {
+  return document.getElementById(id)?.value?.trim() || '';
+}
+
+function limpiarMensajeEjemplares() {
+  const box = document.getElementById('msgEjemplares');
+  if (box) {
+    box.className = 'message';
+    box.textContent = '';
+  }
+}
+
+function mensajeEjemplares(texto, tipo = 'ok') {
+  const box = document.getElementById('msgEjemplares');
+  if (!box) return;
+
+  box.className = `message show ${tipo}`;
+  box.textContent = texto;
+}
+
+function nombreEstadoEjemplar(estado) {
+  const estados = {
+    activo: 'Activo',
+    observacion: 'En observación',
+    tratamiento: 'En tratamiento',
+    trasladado: 'Trasladado',
+    liberado: 'Liberado',
+    fallecido: 'Fallecido'
+  };
+
+  return estados[estado] || estado || 'Sin estado';
+}
+
+
+// ============================================================
+// CARGAR RESUMEN
+// ============================================================
+
+async function cargarResumenEjemplares() {
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard-animales`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudo cargar el resumen de ejemplares'
+      );
+    }
+
+    const resumen = data.resumen || data.dashboard || data;
+
+    const activos = document.getElementById('ejTotalActivos');
+    const observacion = document.getElementById('ejTotalObservacion');
+    const tratamiento = document.getElementById('ejTotalTratamiento');
+    const pendientes = document.getElementById('ejReportesPendientes');
+    const traslados = document.getElementById('ejTrasladosMes');
+
+    if (activos) {
+      activos.textContent =
+        resumen.activos ??
+        resumen.total_activos ??
+        0;
+    }
+
+    if (observacion) {
+      observacion.textContent =
+        resumen.observacion ??
+        resumen.en_observacion ??
+        0;
+    }
+
+    if (tratamiento) {
+      tratamiento.textContent =
+        resumen.tratamiento ??
+        resumen.en_tratamiento ??
+        0;
+    }
+
+    if (pendientes) {
+      pendientes.textContent =
+        resumen.reportes_pendientes ??
+        resumen.pendientes ??
+        0;
+    }
+
+    if (traslados) {
+      traslados.textContent =
+        resumen.traslados_mes ??
+        resumen.trasladados ??
+        resumen.traslados ??
+        0;
+    }
+
+  } catch (error) {
+    console.error('Error cargando dashboard de ejemplares:', error);
+
+    mensajeEjemplares(
+      '❌ No se pudo cargar el resumen de ejemplares: ' + error.message,
+      'error'
+    );
+  }
+}
+
+// ============================================================
+// CARGAR EJEMPLARES
+// ============================================================
+
+async function cargarEjemplares() {
+  const tbody = document.getElementById('tbodyEjemplares');
+
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="8">Cargando ejemplares...</td>
+    </tr>
+  `;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ejemplares`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'No se pudieron cargar los ejemplares');
+    }
+
+    ejemplaresCache = data.ejemplares || [];
+
+    if (!ejemplaresCache.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8">
+            Aún no hay ejemplares registrados.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = ejemplaresCache.map(e => `
+      <tr>
+        <td>
+          <strong>${escapeHTMLFront(e.codigo || '')}</strong>
+        </td>
+
+        <td>
+          ${escapeHTMLFront(e.nombre || 'Sin nombre')}
+        </td>
+
+        <td>
+          ${escapeHTMLFront(e.especie || 'No especificada')}
+        </td>
+
+        <td>
+          ${escapeHTMLFront(e.sexo || 'desconocido')}
+        </td>
+
+        <td>
+          ${e.fecha_llegada
+            ? escapeHTMLFront(String(e.fecha_llegada).slice(0, 10))
+            : 'N/A'}
+        </td>
+
+        <td>
+          ${escapeHTMLFront(e.habitat_asignado || 'No asignado')}
+        </td>
+
+        <td>
+          <span class="animal-status ${
+            e.estado_actual === 'activo' ? 'ok' : 'off'
+          }">
+            ${escapeHTMLFront(nombreEstadoEjemplar(e.estado_actual))}
+          </span>
+        </td>
+
+        <td>
+          <button
+            type="button"
+            class="btn btn-outline btn-sm"
+            onclick="verExpedienteEjemplar(${e.id})"
+          >
+            📋 Expediente
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (error) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8">
+          Error cargando ejemplares.
+        </td>
+      </tr>
+    `;
+
+    mensajeEjemplares('❌ ' + error.message, 'error');
+  }
+}
+
+
+// ============================================================
+// LIMPIAR FORMULARIO DE NUEVO EJEMPLAR
+// ============================================================
+
+function limpiarFormularioEjemplar(limpiarMensaje = true) {
+  const ids = [
+    'ejNombre',
+    'ejEspecie',
+    'ejNombreCientifico',
+    'ejFechaNacimiento',
+    'ejEdadAproximada',
+    'ejProcedencia',
+    'ejHabitat',
+    'ejAlimentacion',
+    'ejCondicionIngreso',
+    'ejDescripcion',
+    'ejImagen'
+  ];
+
+  ids.forEach(id => {
+    const elemento = document.getElementById(id);
+
+    if (elemento) {
+      elemento.value = '';
+    }
+  });
+
+  const sexo = document.getElementById('ejSexo');
+
+  if (sexo) {
+    sexo.value = 'desconocido';
+  }
+
+  const estado = document.getElementById('ejEstado');
+
+  if (estado) {
+    estado.value = 'activo';
+  }
+
+  const fechaLlegada =
+    document.getElementById('ejFechaLlegada');
+
+  if (fechaLlegada) {
+    fechaLlegada.value = todayISO();
+  }
+
+  if (limpiarMensaje) {
+    limpiarMensajeEjemplares();
+  }
+}
+
+
+// ============================================================
+// REGISTRAR NUEVO EJEMPLAR
+// ============================================================
+
+async function guardarEjemplar() {
+  limpiarMensajeEjemplares();
+
+  const nombre = valorElemento('ejNombre');
+  const especie = valorElemento('ejEspecie');
+  const nombre_cientifico = valorElemento('ejNombreCientifico');
+  const sexo = valorElemento('ejSexo') || 'desconocido';
+  const fecha_nacimiento = valorElemento('ejFechaNacimiento') || null;
+  const edad_aproximada = valorElemento('ejEdadAproximada');
+  const fecha_llegada = valorElemento('ejFechaLlegada');
+  const procedencia = valorElemento('ejProcedencia');
+  const habitat_asignado = valorElemento('ejHabitat');
+  const alimentacion = valorElemento('ejAlimentacion');
+  const estado_actual = valorElemento('ejEstado') || 'activo';
+  const condicion_ingreso = valorElemento('ejCondicionIngreso');
+  const descripcion = valorElemento('ejDescripcion');
+  const imagen_url = valorElemento('ejImagen');
+
+  if (!nombre || !especie || !fecha_llegada) {
+    mensajeEjemplares(
+      '❌ Completa nombre, especie y fecha de llegada.',
+      'error'
+    );
+    return;
+  }
+
+  const confirmado = confirm(
+    `¿Registrar a "${nombre}" como nuevo ejemplar del zoológico?`
+  );
+
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ejemplares`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        nombre,
+        especie,
+        nombre_cientifico,
+        sexo,
+        fecha_nacimiento,
+        edad_aproximada,
+        fecha_llegada,
+        procedencia,
+        habitat_asignado,
+        alimentacion,
+        estado_actual,
+        condicion_ingreso,
+        descripcion,
+        imagen_url
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudo registrar el ejemplar'
+      );
+    }
+
+ limpiarFormularioEjemplar(false);
+
+mensajeEjemplares(
+  `✅ Ejemplar registrado correctamente${
+    data.ejemplar?.codigo
+      ? '. Código: ' + data.ejemplar.codigo
+      : ''
+  }.`,
+  'ok'
+);
+
+await cargarEjemplares();
+await cargarResumenEjemplares();
+
+  } catch (error) {
+    mensajeEjemplares('❌ ' + error.message, 'error');
+  }
+}
+
+
+// ============================================================
+// VER EXPEDIENTE DEL EJEMPLAR
+// ============================================================
+
+async function verExpedienteEjemplar(id) {
+  ejemplarSeleccionadoId = Number(id);
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/ejemplares/${ejemplarSeleccionadoId}`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudo cargar el expediente'
+      );
+    }
+
+    const ejemplar = data.ejemplar;
+
+    const titulo = document.getElementById('expedienteTitulo');
+
+    if (titulo) {
+      titulo.textContent =
+        `${ejemplar.codigo || ''} - ${ejemplar.nombre || 'Ejemplar'}`;
+    }
+
+    const info = document.getElementById('expedienteInfo');
+
+    if (info) {
+      info.innerHTML = `
+        <div>
+          <strong>Código:</strong><br>
+          ${escapeHTMLFront(ejemplar.codigo || 'N/A')}
+        </div>
+
+        <div>
+          <strong>Nombre:</strong><br>
+          ${escapeHTMLFront(ejemplar.nombre || 'N/A')}
+        </div>
+
+        <div>
+          <strong>Especie:</strong><br>
+          ${escapeHTMLFront(ejemplar.especie || 'N/A')}
+        </div>
+
+        <div>
+          <strong>Sexo:</strong><br>
+          ${escapeHTMLFront(ejemplar.sexo || 'N/A')}
+        </div>
+
+        <div>
+          <strong>Fecha de llegada:</strong><br>
+          ${
+            ejemplar.fecha_llegada
+              ? escapeHTMLFront(
+                  String(ejemplar.fecha_llegada).slice(0, 10)
+                )
+              : 'N/A'
+          }
+        </div>
+
+        <div>
+          <strong>Procedencia:</strong><br>
+          ${escapeHTMLFront(ejemplar.procedencia || 'N/A')}
+        </div>
+
+        <div>
+          <strong>Hábitat:</strong><br>
+          ${escapeHTMLFront(
+            ejemplar.habitat_asignado || 'No asignado'
+          )}
+        </div>
+
+        <div>
+          <strong>Estado:</strong><br>
+          ${escapeHTMLFront(
+            nombreEstadoEjemplar(ejemplar.estado_actual)
+          )}
+        </div>
+      `;
+    }
+
+    const reporteId = document.getElementById('reporteEjemplarId');
+    if (reporteId) reporteId.value = ejemplarSeleccionadoId;
+
+    const bajaId = document.getElementById('bajaEjemplarId');
+    if (bajaId) bajaId.value = ejemplarSeleccionadoId;
+
+    await cargarReportesEjemplar(ejemplarSeleccionadoId);
+    await cargarHistorialBajasEjemplar(ejemplarSeleccionadoId);
+    
+
+    const expediente = document.getElementById('expedienteEjemplar');
+
+    if (expediente) {
+      expediente.style.display = 'block';
+
+      expediente.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+  } catch (error) {
+    mensajeEjemplares('❌ ' + error.message, 'error');
+  }
+}
+async function cargarHistorialBajasEjemplar(id) {
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/bajas-animales`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudo cargar el historial de bajas'
+      );
+    }
+
+    const bajas = data.bajas || [];
+
+    const bajasEjemplar = bajas.filter(
+      baja => Number(baja.ejemplar_id) === Number(id)
+    );
+
+    // Como el HTML actual todavía no tiene un contenedor
+    // separado para mostrar las bajas, lo creamos una sola vez.
+
+    let bloque = document.getElementById(
+      'historialBajasEjemplar'
+    );
+
+    const expediente =
+      document.getElementById('expedienteEjemplar');
+
+    if (!bloque && expediente) {
+      bloque = document.createElement('div');
+
+      bloque.id = 'historialBajasEjemplar';
+      bloque.className = 'detail-list';
+
+      bloque.style.marginTop = '20px';
+
+      expediente.appendChild(bloque);
+    }
+
+    if (!bloque) return;
+
+    if (!bajasEjemplar.length) {
+      bloque.innerHTML = `
+        <strong>🚨 Historial de bajas</strong>
+
+        <div
+          class="tiny-note"
+          style="margin-top:12px;"
+        >
+          Este ejemplar no tiene bajas registradas.
+        </div>
+      `;
+
+      return;
+    }
+
+    bloque.innerHTML = `
+      <strong>🚨 Historial de bajas</strong>
+
+      <div style="margin-top:12px;">
+
+        ${bajasEjemplar.map(baja => `
+          <div
+            class="animal-admin-card"
+            style="margin-bottom:12px;"
+          >
+
+            <div class="animal-admin-info">
+
+              <h4>
+                ${escapeHTMLFront(
+                  String(baja.tipo_baja || 'Baja')
+                )}
+              </h4>
+
+              <p>
+                <strong>Fecha:</strong>
+                ${
+                  baja.fecha_baja
+                    ? escapeHTMLFront(
+                        String(baja.fecha_baja).slice(0, 10)
+                      )
+                    : 'N/A'
+                }
+              </p>
+
+              <p>
+                <strong>Motivo:</strong>
+                ${escapeHTMLFront(
+                  baja.motivo || 'Sin información'
+                )}
+              </p>
+
+              <p>
+                <strong>Responsable:</strong>
+                ${escapeHTMLFront(
+                  baja.responsable || 'N/A'
+                )}
+              </p>
+
+              ${
+                baja.destino_traslado
+                  ? `
+                    <p>
+                      <strong>Destino:</strong>
+                      ${escapeHTMLFront(
+                        baja.destino_traslado
+                      )}
+                    </p>
+                  `
+                  : ''
+              }
+
+              ${
+                baja.descripcion
+                  ? `
+                    <p>
+                      <strong>Descripción:</strong>
+                      ${escapeHTMLFront(
+                        baja.descripcion
+                      )}
+                    </p>
+                  `
+                  : ''
+              }
+
+              ${
+                baja.documento_url
+                  ? `
+                    <p>
+                      <strong>Documento:</strong>
+                      ${escapeHTMLFront(
+                        baja.documento_url
+                      )}
+                    </p>
+                  `
+                  : ''
+              }
+
+            </div>
+
+          </div>
+        `).join('')}
+
+      </div>
+    `;
+
+  } catch (error) {
+    console.error(
+      'Error cargando historial de bajas:',
+      error
+    );
+  }
+}
+
+// ============================================================
+// CARGAR REPORTES SEMANALES
+// ============================================================
+
+async function cargarReportesEjemplar(id) {
+  const lista = document.getElementById('listaReportesEjemplar');
+
+  if (!lista) return;
+
+  lista.innerHTML = 'Cargando reportes...';
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/reportes-animales/ejemplar/${id}`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudieron cargar los reportes'
+      );
+    }
+
+    const reportes = data.reportes || [];
+
+    if (!reportes.length) {
+      lista.innerHTML = `
+        <div class="tiny-note">
+          Este ejemplar todavía no tiene reportes semanales.
+        </div>
+      `;
+      return;
+    }
+
+    lista.innerHTML = reportes.map(r => `
+      <div class="animal-admin-card">
+
+        <div class="animal-admin-info">
+
+          <h4>
+            📋 Reporte ${
+              r.fecha_reporte
+                ? escapeHTMLFront(
+                    String(r.fecha_reporte).slice(0, 10)
+                  )
+                : ''
+            }
+          </h4>
+
+          <p>
+            <strong>Semana:</strong>
+            ${escapeHTMLFront(r.numero_semana || 'N/A')}
+          </p>
+
+          <p>
+            <strong>Condición:</strong>
+            ${escapeHTMLFront(r.condicion_general || 'N/A')}
+          </p>
+
+          <p>
+            <strong>Alimentación:</strong>
+            ${escapeHTMLFront(r.alimentacion || 'N/A')}
+          </p>
+
+          <p>
+            <strong>Comportamiento:</strong>
+            ${escapeHTMLFront(r.comportamiento || 'N/A')}
+          </p>
+
+          <p>
+            <strong>Peso:</strong>
+            ${
+              r.peso !== null && r.peso !== undefined
+                ? escapeHTMLFront(r.peso) + ' kg'
+                : 'No registrado'
+            }
+          </p>
+
+          <p>
+            <strong>Responsable:</strong>
+            ${escapeHTMLFront(r.responsable || 'N/A')}
+          </p>
+
+          <p>
+            <strong>Observaciones:</strong>
+            ${escapeHTMLFront(
+              r.observaciones || 'Sin observaciones'
+            )}
+          </p>
+
+          <p>
+            <strong>Recomendaciones:</strong>
+            ${escapeHTMLFront(
+              r.recomendaciones || 'Sin recomendaciones'
+            )}
+          </p>
+
+          ${
+            r.imagen_url
+              ? `
+                <p>
+                  <strong>Imagen:</strong><br>
+                  <img
+                    src="${escapeHTMLFront(r.imagen_url)}"
+                    alt="Evidencia del reporte"
+                    style="
+                      max-width:220px;
+                      margin-top:8px;
+                      border-radius:12px;
+                    "
+                  >
+                </p>
+              `
+              : ''
+          }
+
+        </div>
+
+      </div>
+    `).join('');
+
+  } catch (error) {
+    lista.innerHTML = `
+      <div class="tiny-note">
+        ❌ ${escapeHTMLFront(error.message)}
+      </div>
+    `;
+  }
+}
+
+
+// ============================================================
+// GUARDAR REPORTE SEMANAL
+// ============================================================
+
+async function guardarReporteSemanal() {
+  const ejemplarId = Number(
+    document.getElementById('reporteEjemplarId')?.value ||
+    ejemplarSeleccionadoId
+  );
+
+  if (!ejemplarId) {
+    mensajeEjemplares(
+      '❌ Primero selecciona un ejemplar.',
+      'error'
+    );
+    return;
+  }
+
+  const fecha_reporte =
+    valorElemento('reporteFecha') || todayISO();
+
+  const condicion_general =
+    valorElemento('reporteCondicion') || 'buena';
+
+  const alimentacion =
+    valorElemento('reporteAlimentacion') || 'normal';
+
+  const comportamiento =
+    valorElemento('reporteComportamiento') || 'normal';
+
+  const pesoTexto = valorElemento('reportePeso');
+
+  const peso = pesoTexto
+    ? Number(pesoTexto)
+    : null;
+
+  const observaciones =
+    valorElemento('reporteObservaciones');
+
+  const recomendaciones =
+    valorElemento('reporteRecomendaciones');
+
+  const responsable =
+    valorElemento('reporteResponsable');
+
+  const imagen_url =
+    valorElemento('reporteImagen');
+
+  if (!fecha_reporte || !responsable) {
+    mensajeEjemplares(
+      '❌ Completa la fecha y el responsable del reporte.',
+      'error'
+    );
+    return;
+  }
+
+  if (peso !== null && (!Number.isFinite(peso) || peso < 0)) {
+    mensajeEjemplares(
+      '❌ El peso debe ser un número válido.',
+      'error'
+    );
+    return;
+  }
+
+  const confirmado = confirm(
+    '¿Guardar el reporte semanal de este ejemplar?'
+  );
+
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/reportes-animales`,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          ejemplar_id: ejemplarId,
+          fecha_reporte,
+          condicion_general,
+          alimentacion,
+          comportamiento,
+          peso,
+          observaciones,
+          recomendaciones,
+          responsable,
+          imagen_url
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudo guardar el reporte'
+      );
+    }
+
+    mensajeEjemplares(
+      '✅ Reporte semanal guardado correctamente.',
+      'ok'
+    );
+
+    document.getElementById('reporteFecha').value = todayISO();
+    document.getElementById('reporteCondicion').value = 'buena';
+    document.getElementById('reporteAlimentacion').value = 'normal';
+    document.getElementById('reporteComportamiento').value = 'normal';
+    document.getElementById('reportePeso').value = '';
+    document.getElementById('reporteObservaciones').value = '';
+    document.getElementById('reporteRecomendaciones').value = '';
+    document.getElementById('reporteImagen').value = '';
+
+    // Dejamos el responsable por si la misma persona
+    // captura varios reportes durante el día.
+
+    await cargarReportesEjemplar(ejemplarId);
+    await cargarEjemplares();
+    await cargarResumenEjemplares();
+
+  } catch (error) {
+    mensajeEjemplares(
+      '❌ ' + error.message,
+      'error'
+    );
+  }
+}
+
+
+// ============================================================
+// REGISTRAR BAJA
+// ============================================================
+
+async function registrarBajaEjemplar() {
+  const ejemplarId = Number(
+    document.getElementById('bajaEjemplarId')?.value ||
+    ejemplarSeleccionadoId
+  );
+
+  if (!ejemplarId) {
+    mensajeEjemplares(
+      '❌ Primero selecciona un ejemplar.',
+      'error'
+    );
+    return;
+  }
+
+  const tipo_baja = valorElemento('bajaTipo');
+  const fecha_baja =
+    valorElemento('bajaFecha') || todayISO();
+
+  const motivo = valorElemento('bajaMotivo');
+  const descripcion = valorElemento('bajaDescripcion');
+  const destino_traslado = valorElemento('bajaDestino');
+  const responsable = valorElemento('bajaResponsable');
+  const documento_url = valorElemento('bajaDocumento');
+
+  if (!tipo_baja || !fecha_baja || !motivo || !responsable) {
+    mensajeEjemplares(
+      '❌ Completa tipo de baja, fecha, motivo y responsable.',
+      'error'
+    );
+    return;
+  }
+
+  // Si es traslado, pedimos también el destino.
+  if (tipo_baja === 'traslado' && !destino_traslado) {
+    mensajeEjemplares(
+      '❌ Para un traslado debes indicar el destino.',
+      'error'
+    );
+    return;
+  }
+
+  const ejemplar = ejemplaresCache.find(
+    e => Number(e.id) === ejemplarId
+  );
+
+  const nombre = ejemplar?.nombre || 'este ejemplar';
+
+  const confirmado = confirm(
+    `¿Seguro que deseas registrar la baja de "${nombre}"?\n\n` +
+    `Tipo: ${tipo_baja}\n` +
+    `Fecha: ${fecha_baja}\n\n` +
+    `El expediente y sus reportes anteriores se conservarán.`
+  );
+
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/bajas-animales`,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          ejemplar_id: ejemplarId,
+          tipo_baja,
+          fecha_baja,
+          motivo,
+          descripcion: descripcion || null,
+          destino_traslado:
+            tipo_baja === 'traslado'
+              ? destino_traslado
+              : null,
+          responsable,
+          documento_url: documento_url || null
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'No se pudo registrar la baja'
+      );
+    }
+
+    mensajeEjemplares(
+      '✅ Baja registrada correctamente. El expediente y su historial se conservaron.',
+      'ok'
+    );
+
+    // Limpiar formulario de baja
+    const bajaTipo = document.getElementById('bajaTipo');
+    const bajaFecha = document.getElementById('bajaFecha');
+    const bajaResponsable = document.getElementById('bajaResponsable');
+    const bajaDestino = document.getElementById('bajaDestino');
+    const bajaDocumento = document.getElementById('bajaDocumento');
+    const bajaMotivo = document.getElementById('bajaMotivo');
+    const bajaDescripcion = document.getElementById('bajaDescripcion');
+
+    if (bajaTipo) bajaTipo.value = 'fallecimiento';
+    if (bajaFecha) bajaFecha.value = todayISO();
+    if (bajaResponsable) bajaResponsable.value = '';
+    if (bajaDestino) bajaDestino.value = '';
+    if (bajaDocumento) bajaDocumento.value = '';
+    if (bajaMotivo) bajaMotivo.value = '';
+    if (bajaDescripcion) bajaDescripcion.value = '';
+// Recargar la tabla y el resumen porque
+// el estado del ejemplar cambió.
+await cargarEjemplares();
+await cargarResumenEjemplares();
+
+// Recargar el expediente actualizado.
+await verExpedienteEjemplar(ejemplarId);
+
+// Actualizar también el historial de bajas.
+await cargarHistorialBajasEjemplar(ejemplarId);
+
+  } catch (error) {
+    mensajeEjemplares(
+      '❌ ' + error.message,
+      'error'
+    );
+  }
+}
+
 async function verificarSesionPanel() {
   try {
     const res = await fetch(`${API_BASE}/api/panel-me`, {
@@ -2397,7 +3384,6 @@ if (!data.success) {
 
 mostrarUsuarioPanel(data.user?.username || 'admin');
 return true;
-    return true;
   } catch (error) {
     window.location.href = '/panel-login?next=' + encodeURIComponent('/admin.html');
     return false;
@@ -2486,7 +3472,27 @@ document.getElementById('btnRegistrarEntrada').addEventListener('click', registr
 document.getElementById('btnGuardarAnimal')?.addEventListener('click', guardarAnimal);
 document.getElementById('btnLimpiarAnimal')?.addEventListener('click', limpiarFormularioAnimal);
 document.getElementById('animalImagen')?.addEventListener('input', actualizarPreviewAnimal);
+// ============================================================
+// BOTONES - CONTROL DE EJEMPLARES
+// ============================================================
 
+document.getElementById('btnGuardarEjemplar')
+  ?.addEventListener('click', guardarEjemplar);
+
+document.getElementById('btnLimpiarEjemplar')
+  ?.addEventListener('click', limpiarFormularioEjemplar);
+
+document.getElementById('btnActualizarEjemplares')
+  ?.addEventListener('click', async () => {
+    await cargarEjemplares();
+    await cargarResumenEjemplares();
+  });
+
+document.getElementById('btnGuardarReporte')
+  ?.addEventListener('click', guardarReporteSemanal);
+
+document.getElementById('btnRegistrarBajaEjemplar')
+  ?.addEventListener('click', registrarBajaEjemplar);
  document.addEventListener('DOMContentLoaded', async () => {
   const ok = await verificarSesionPanel();
   if (!ok) return;
@@ -2509,6 +3515,22 @@ await cargarPromociones();
 
 limpiarFormularioAnimal();
 await cargarAnimalesAdmin();
+
+// CONTROL INTERNO DE EJEMPLARES
+limpiarFormularioEjemplar();
+
+const reporteFecha = document.getElementById('reporteFecha');
+if (reporteFecha) {
+  reporteFecha.value = hoy;
+}
+
+const bajaFecha = document.getElementById('bajaFecha');
+if (bajaFecha) {
+  bajaFecha.value = hoy;
+}
+
+await cargarEjemplares();
+await cargarResumenEjemplares();
 
 await cargarDashboard();
 await cargarVentas();
