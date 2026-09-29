@@ -3476,21 +3476,62 @@ document.getElementById('animalImagen')?.addEventListener('input', actualizarPre
 // BOTONES - CONTROL DE EJEMPLARES
 // ============================================================
 
+// Abrir formulario para registrar un nuevo ejemplar
+document.getElementById('btnNuevoEjemplar')
+  ?.addEventListener('click', () => {
+
+    const formulario =
+      document.getElementById('formEjemplarCard');
+
+    if (!formulario) return;
+
+    limpiarFormularioEjemplar();
+
+    formulario.style.display = 'block';
+
+    formulario.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  });
+
+
+// Cancelar registro y ocultar formulario
+document.getElementById('btnCancelarEjemplar')
+  ?.addEventListener('click', () => {
+
+    const formulario =
+      document.getElementById('formEjemplarCard');
+
+    if (!formulario) return;
+
+    limpiarFormularioEjemplar();
+
+    formulario.style.display = 'none';
+  });
+
+
+// Guardar nuevo ejemplar
 document.getElementById('btnGuardarEjemplar')
   ?.addEventListener('click', guardarEjemplar);
 
-document.getElementById('btnLimpiarEjemplar')
-  ?.addEventListener('click', limpiarFormularioEjemplar);
 
+// Actualizar listado y resumen
 document.getElementById('btnActualizarEjemplares')
   ?.addEventListener('click', async () => {
+
     await cargarEjemplares();
     await cargarResumenEjemplares();
+
   });
 
+
+// Guardar reporte semanal
 document.getElementById('btnGuardarReporte')
   ?.addEventListener('click', guardarReporteSemanal);
 
+
+// Registrar baja del ejemplar
 document.getElementById('btnRegistrarBajaEjemplar')
   ?.addEventListener('click', registrarBajaEjemplar);
  document.addEventListener('DOMContentLoaded', async () => {
