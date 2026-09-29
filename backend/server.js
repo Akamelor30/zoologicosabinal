@@ -1801,17 +1801,42 @@ app.delete('/api/animales-admin/:id', async (req, res) => {
 // ==========================================================
 app.get('/api/dashboard-animales', async (req, res) => {
     try {
-        const [resumenRows] = await pool.query(`
-            SELECT
-                COUNT(*) AS total,
-                COALESCE(SUM(estado_actual = 'activo'), 0) AS activos,
-                COALESCE(SUM(estado_actual = 'observacion'), 0) AS observacion,
-                COALESCE(SUM(estado_actual = 'tratamiento'), 0) AS tratamiento,
-                COALESCE(SUM(estado_actual = 'trasladado'), 0) AS trasladados,
-                COALESCE(SUM(estado_actual = 'liberado'), 0) AS liberados,
-                COALESCE(SUM(estado_actual = 'fallecido'), 0) AS fallecidos
-            FROM ejemplares
-        `);
+     const [resumenRows] = await pool.query(`
+    SELECT
+        COUNT(*) AS total,
+
+        COALESCE(
+            SUM(activo = 1 AND estado_actual = 'activo'),
+            0
+        ) AS activos,
+
+        COALESCE(
+            SUM(activo = 1 AND estado_actual = 'observacion'),
+            0
+        ) AS observacion,
+
+        COALESCE(
+            SUM(activo = 1 AND estado_actual = 'tratamiento'),
+            0
+        ) AS tratamiento,
+
+        COALESCE(
+            SUM(estado_actual = 'trasladado'),
+            0
+        ) AS trasladados,
+
+        COALESCE(
+            SUM(estado_actual = 'liberado'),
+            0
+        ) AS liberados,
+
+        COALESCE(
+            SUM(estado_actual = 'fallecido'),
+            0
+        ) AS fallecidos
+
+    FROM ejemplares
+`);
 
         const [reportesSemanaRows] = await pool.query(`
             SELECT COUNT(*) AS total
@@ -1819,17 +1844,19 @@ app.get('/api/dashboard-animales', async (req, res) => {
             WHERE YEARWEEK(fecha_reporte, 1) = YEARWEEK(CURDATE(), 1)
         `);
 
-        const [pendientesRows] = await pool.query(`
-            SELECT COUNT(*) AS total
-            FROM ejemplares e
-            WHERE e.estado_actual IN ('activo', 'observacion', 'tratamiento')
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM reportes_animales r
-                  WHERE r.ejemplar_id = e.id
-                    AND YEARWEEK(r.fecha_reporte, 1) = YEARWEEK(CURDATE(), 1)
-              )
-        `);
+       const [pendientesRows] = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM ejemplares e
+    WHERE e.activo = 1
+      AND e.estado_actual IN ('activo', 'observacion', 'tratamiento')
+      AND NOT EXISTS (
+          SELECT 1
+          FROM reportes_animales r
+          WHERE r.ejemplar_id = e.id
+            AND YEARWEEK(r.fecha_reporte, 1)
+                = YEARWEEK(CURDATE(), 1)
+      )
+`);
 
         const resumen = resumenRows[0] || {};
 
@@ -2273,12 +2300,12 @@ app.post('/api/reportes-animales', async (req, res) => {
             });
         }
 
-        const [ejemplarRows] = await pool.query(`
-            SELECT id, codigo, nombre, estado_actual
-            FROM ejemplares
-            WHERE id = ?
-            LIMIT 1
-        `, [ejemplarId]);
+    const [ejemplarRows] = await pool.query(`
+    SELECT id, codigo, nombre, estado_actual, activo
+    FROM ejemplares
+    WHERE id = ?
+    LIMIT 1
+`, [ejemplarId]);
 
         if (!ejemplarRows.length) {
             return res.status(404).json({
@@ -2289,16 +2316,17 @@ app.post('/api/reportes-animales', async (req, res) => {
 
         const ejemplar = ejemplarRows[0];
 
-        if (
-            ['fallecido', 'trasladado', 'liberado']
-                .includes(ejemplar.estado_actual)
-        ) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    'No se pueden registrar reportes semanales para un ejemplar dado de baja'
-            });
-        }
+ if (
+    Number(ejemplar.activo) === 0 ||
+    ['fallecido', 'trasladado', 'liberado']
+        .includes(ejemplar.estado_actual)
+) {
+    return res.status(400).json({
+        success: false,
+        message:
+            'No se pueden registrar reportes semanales para un ejemplar dado de baja'
+    });
+}
 
         // Evitar dos reportes para el mismo animal
         // dentro de la misma semana.
@@ -2487,18 +2515,18 @@ app.post('/api/bajas-animales', async (req, res) => {
         }
 
         await conn.beginTransaction();
-
-        const [ejemplarRows] = await conn.query(`
-            SELECT
-                id,
-                codigo,
-                nombre,
-                estado_actual
-            FROM ejemplares
-            WHERE id = ?
-            LIMIT 1
-            FOR UPDATE
-        `, [ejemplarId]);
+const [ejemplarRows] = await conn.query(`
+    SELECT
+        id,
+        codigo,
+        nombre,
+        estado_actual,
+        activo
+    FROM ejemplares
+    WHERE id = ?
+    LIMIT 1
+    FOR UPDATE
+`, [ejemplarId]);
 
         if (!ejemplarRows.length) {
             await conn.rollback();
@@ -2511,18 +2539,19 @@ app.post('/api/bajas-animales', async (req, res) => {
 
         const ejemplar = ejemplarRows[0];
 
-        if (
-            ['fallecido', 'trasladado', 'liberado']
-                .includes(ejemplar.estado_actual)
-        ) {
-            await conn.rollback();
+       if (
+    Number(ejemplar.activo) === 0 ||
+    ['fallecido', 'trasladado', 'liberado']
+        .includes(ejemplar.estado_actual)
+) {
+    await conn.rollback();
 
-            return res.status(400).json({
-                success: false,
-                message:
-                    'Este ejemplar ya fue dado de baja anteriormente'
-            });
-        }
+    return res.status(400).json({
+        success: false,
+        message:
+            'Este ejemplar ya fue dado de baja anteriormente'
+    });
+}
 
         const [result] = await conn.query(`
             INSERT INTO bajas_animales
