@@ -2391,6 +2391,27 @@ function nombreEstadoEjemplar(estado) {
   return estados[estado] || estado || 'Sin estado';
 }
 
+// ============================================================
+// NOMBRE AMIGABLE DEL TIPO DE BAJA
+// ============================================================
+
+function nombreTipoBaja(tipo) {
+
+  const nombres = {
+
+    fallecimiento: '⚫ Fallecimiento',
+
+    traslado: '🚚 Traslado',
+
+    liberacion: '🕊️ Liberación',
+
+    otro: '📁 Otra salida'
+
+  };
+
+  return nombres[tipo] || tipo || 'Baja';
+
+}
 
 // ============================================================
 // CARGAR RESUMEN
@@ -2460,24 +2481,359 @@ async function cargarResumenEjemplares() {
     );
   }
 }
+// ============================================================
+// CARGAR REVISIONES PENDIENTES DE ESTA SEMANA
+// ============================================================
+
+async function cargarRevisionesPendientes() {
+
+  const contador =
+    document.getElementById('contadorRevisionesPendientes');
+
+  const mensajeVacio =
+    document.getElementById('mensajeSinRevisionesPendientes');
+
+  const lista =
+    document.getElementById('listaRevisionesPendientes');
+
+
+  if (!lista) return;
+
+
+  lista.innerHTML = `
+    <div class="tiny-note">
+      🔄 Cargando revisiones pendientes...
+    </div>
+  `;
+
+
+  try {
+
+    const res = await fetch(
+      `${API_BASE}/api/ejemplares-pendientes-revision`
+    );
+
+    const data = await res.json();
+
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message ||
+        'No se pudieron cargar las revisiones pendientes'
+      );
+    }
+
+
+    const pendientes = data.pendientes || [];
+
+
+    // --------------------------------------------------------
+    // ACTUALIZAR CONTADOR
+    // --------------------------------------------------------
+
+    if (contador) {
+
+      contador.textContent =
+        pendientes.length === 1
+          ? '1 pendiente'
+          : `${pendientes.length} pendientes`;
+
+    }
+
+
+    // --------------------------------------------------------
+    // NO HAY PENDIENTES
+    // --------------------------------------------------------
+
+    if (!pendientes.length) {
+
+      lista.innerHTML = '';
+
+      if (mensajeVacio) {
+        mensajeVacio.style.display = 'block';
+      }
+
+      return;
+    }
+
+
+    // Sí hay pendientes
+    if (mensajeVacio) {
+      mensajeVacio.style.display = 'none';
+    }
+
+
+    // --------------------------------------------------------
+    // MOSTRAR ANIMALES PENDIENTES
+    // --------------------------------------------------------
+
+    lista.innerHTML = pendientes.map(e => {
+
+      const nombre =
+        escapeHTMLFront(
+          e.nombre || 'Sin nombre'
+        );
+
+      const codigo =
+        escapeHTMLFront(
+          e.codigo || 'Sin código'
+        );
+
+      const especie =
+        escapeHTMLFront(
+          e.especie || 'No especificada'
+        );
+
+      const habitat =
+        escapeHTMLFront(
+          e.habitat_asignado || 'No asignado'
+        );
+
+      const ultimaRevision =
+        e.ultima_revision
+          ? escapeHTMLFront(
+              String(e.ultima_revision).slice(0, 10)
+            )
+          : 'Sin revisión anterior';
+
+
+      return `
+
+        <div
+          class="animal-admin-card"
+          style="margin-bottom:12px;"
+        >
+
+          <div class="animal-admin-info">
+
+            <h4>
+              🐾 ${nombre}
+            </h4>
+
+            <p>
+              <strong>Código:</strong>
+              ${codigo}
+            </p>
+
+            <p>
+              <strong>Especie:</strong>
+              ${especie}
+            </p>
+
+            <p>
+              <strong>Hábitat:</strong>
+              ${habitat}
+            </p>
+
+            <p>
+              <strong>Última revisión:</strong>
+              ${ultimaRevision}
+            </p>
+
+          </div>
+
+
+          <div class="animal-admin-actions">
+
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              onclick="abrirRevisionPendiente(${Number(e.id)})"
+            >
+              📝 Hacer revisión
+            </button>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }).join('');
+
+
+  } catch (error) {
+
+    console.error(
+      'Error cargando revisiones pendientes:',
+      error
+    );
+
+
+    if (contador) {
+      contador.textContent = 'Error';
+    }
+
+
+    if (mensajeVacio) {
+      mensajeVacio.style.display = 'none';
+    }
+
+
+    lista.innerHTML = `
+      <div class="tiny-note">
+        ❌ No se pudieron cargar las revisiones pendientes.
+      </div>
+    `;
+
+  }
+
+}
+
+// ============================================================
+// ABRIR DIRECTAMENTE LA REVISIÓN DE UN ANIMAL PENDIENTE
+// ============================================================
+
+async function abrirRevisionPendiente(id) {
+
+  if (!id) return;
+
+
+  try {
+
+    // Primero abrir el expediente del animal.
+    await verExpedienteEjemplar(id);
+
+
+    // Después mostrar únicamente el formulario de revisión.
+    const bloqueReporte =
+      document.getElementById('bloqueReporteEjemplar');
+
+    const bloqueHistorial =
+      document.getElementById('bloqueHistorialEjemplar');
+
+    const bloqueBaja =
+      document.getElementById('bloqueBajaEjemplar');
+
+
+    if (bloqueHistorial) {
+      bloqueHistorial.style.display = 'none';
+    }
+
+    if (bloqueBaja) {
+      bloqueBaja.style.display = 'none';
+    }
+
+
+    if (bloqueReporte) {
+
+      bloqueReporte.style.display = 'block';
+
+      bloqueReporte.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+
+    }
+
+
+    // Asegurar que el reporte pertenece
+    // al animal seleccionado.
+    const reporteId =
+      document.getElementById('reporteEjemplarId');
+
+    if (reporteId) {
+      reporteId.value = id;
+    }
+
+
+    const reporteFecha =
+      document.getElementById('reporteFecha');
+
+    if (reporteFecha && !reporteFecha.value) {
+      reporteFecha.value = todayISO();
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      'Error abriendo revisión pendiente:',
+      error
+    );
+
+    mensajeEjemplares(
+      '❌ No se pudo abrir la revisión del animal.',
+      'error'
+    );
+
+  }
+
+}
+
 
 // ============================================================
 // CARGAR EJEMPLARES
 // ============================================================
 
 async function cargarEjemplares() {
-  const tbody = document.getElementById('tbodyEjemplares');
+
+  const tbody =
+    document.getElementById('tbodyEjemplares');
 
   if (!tbody) return;
 
+
   tbody.innerHTML = `
     <tr>
-      <td colspan="8">Cargando ejemplares...</td>
+      <td colspan="8">
+        🔄 Cargando animales...
+      </td>
     </tr>
   `;
 
+
   try {
-    const res = await fetch(`${API_BASE}/api/ejemplares`);
+
+    // ================================================
+    // OBTENER FILTROS DEL HTML
+    // ================================================
+
+    const buscar =
+      document.getElementById('buscarEjemplar')
+        ?.value.trim() || '';
+
+    const estado =
+      document.getElementById('filtroEstadoEjemplar')
+        ?.value || '';
+
+    const situacion =
+      document.getElementById('filtroSituacionEjemplar')
+        ?.value || '';
+
+
+    // ================================================
+    // CONSTRUIR CONSULTA
+    // ================================================
+
+    const params = new URLSearchParams();
+
+
+    if (buscar) {
+      params.set('buscar', buscar);
+    }
+
+
+    if (estado) {
+      params.set('estado', estado);
+    }
+
+
+    if (situacion) {
+      params.set('situacion', situacion);
+    }
+
+
+    const query =
+      params.toString()
+        ? `?${params.toString()}`
+        : '';
+
+
+    const res = await fetch(
+      `${API_BASE}/api/ejemplares${query}`
+    );
+
     const data = await res.json();
 
     if (!res.ok || !data.success) {
@@ -2485,17 +2841,19 @@ async function cargarEjemplares() {
     }
 
     ejemplaresCache = data.ejemplares || [];
+if (!ejemplaresCache.length) {
 
-    if (!ejemplaresCache.length) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8">
-            Aún no hay ejemplares registrados.
-          </td>
-        </tr>
-      `;
-      return;
-    }
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="8">
+        🔎 No se encontraron animales
+        con los filtros seleccionados.
+      </td>
+    </tr>
+  `;
+
+  return;
+}
 
     tbody.innerHTML = ejemplaresCache.map(e => `
       <tr>
@@ -2690,8 +3048,68 @@ mensajeEjemplares(
   'ok'
 );
 
+
+// ========================================================
+// LIMPIAR FILTROS PARA MOSTRAR EL ANIMAL RECIÉN REGISTRADO
+// ========================================================
+
+const buscarEjemplar =
+  document.getElementById('buscarEjemplar');
+
+const filtroEstado =
+  document.getElementById('filtroEstadoEjemplar');
+
+const filtroSituacion =
+  document.getElementById('filtroSituacionEjemplar');
+
+if (buscarEjemplar) {
+  buscarEjemplar.value = '';
+}
+
+if (filtroEstado) {
+  filtroEstado.value = '';
+}
+
+if (filtroSituacion) {
+  filtroSituacion.value = 'activos';
+}
+
+
+// AHORA SÍ RECARGAMOS LOS EJEMPLARES
 await cargarEjemplares();
 await cargarResumenEjemplares();
+await cargarRevisionesPendientes();
+
+limpiarFormularioEjemplar();
+
+
+// ========================================================
+// CERRAR FORMULARIO DE REGISTRO
+// ========================================================
+
+const formEjemplarCard =
+  document.getElementById('formEjemplarCard');
+
+if (formEjemplarCard) {
+  formEjemplarCard.style.display = 'none';
+}
+
+
+// ========================================================
+// REGRESAR A LA LISTA DE ANIMALES
+// ========================================================
+
+const tbodyEjemplares =
+  document.getElementById('tbodyEjemplares');
+
+if (tbodyEjemplares) {
+
+  tbodyEjemplares.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center'
+  });
+
+}
 
   } catch (error) {
     mensajeEjemplares('❌ ' + error.message, 'error');
@@ -2790,13 +3208,66 @@ async function verExpedienteEjemplar(id) {
     const bajaId = document.getElementById('bajaEjemplarId');
     if (bajaId) bajaId.value = ejemplarSeleccionadoId;
 
-    await cargarReportesEjemplar(ejemplarSeleccionadoId);
-    await cargarHistorialBajasEjemplar(ejemplarSeleccionadoId);
-    
+    // ========================================================
+// ABRIR EL EXPEDIENTE LIMPIO
+// ========================================================
 
-    const expediente = document.getElementById('expedienteEjemplar');
+// Al seleccionar un animal, no mostramos automáticamente
+// revisión, historial ni baja.
+// La persona elegirá qué desea hacer con los botones.
 
-    if (expediente) {
+const bloqueReporte =
+  document.getElementById('bloqueReporteEjemplar');
+
+const bloqueHistorial =
+  document.getElementById('bloqueHistorialEjemplar');
+
+const bloqueBaja =
+  document.getElementById('bloqueBajaEjemplar');
+
+if (bloqueReporte) {
+  bloqueReporte.style.display = 'none';
+}
+
+if (bloqueHistorial) {
+  bloqueHistorial.style.display = 'none';
+}
+
+if (bloqueBaja) {
+  bloqueBaja.style.display = 'none';
+}
+
+
+// Limpiar historial visible anterior para evitar
+// mostrar información de otro animal por un instante.
+const listaReportes =
+  document.getElementById('listaReportesEjemplar');
+
+if (listaReportes) {
+  listaReportes.innerHTML = `
+    <div class="tiny-note">
+      Presiona "Ver historial" para consultar
+      las revisiones de este animal.
+    </div>
+  `;
+}
+
+
+// Ocultar el historial viejo de bajas si fue creado
+// anteriormente por el JavaScript.
+const historialBajasViejo =
+  document.getElementById('historialBajasEjemplar');
+
+if (historialBajasViejo) {
+  historialBajasViejo.style.display = 'none';
+}
+
+
+// Mostrar expediente
+const expediente =
+  document.getElementById('expedienteEjemplar');
+
+if (expediente) {
       expediente.style.display = 'block';
 
       expediente.scrollIntoView({
@@ -2809,161 +3280,223 @@ async function verExpedienteEjemplar(id) {
     mensajeEjemplares('❌ ' + error.message, 'error');
   }
 }
+// ============================================================
+// CARGAR HISTORIAL DE BAJAS DE UN EJEMPLAR
+// ============================================================
+
 async function cargarHistorialBajasEjemplar(id) {
+
+  if (!id) return;
+
   try {
+
     const res = await fetch(
-      `${API_BASE}/api/bajas-animales`
+      `${API_BASE}/api/bajas-animales/ejemplar/${id}`
     );
 
     const data = await res.json();
 
     if (!res.ok || !data.success) {
       throw new Error(
-        data.message || 'No se pudo cargar el historial de bajas'
+        data.message ||
+        'No se pudo cargar el historial de bajas'
       );
     }
 
     const bajas = data.bajas || [];
 
-    const bajasEjemplar = bajas.filter(
-      baja => Number(baja.ejemplar_id) === Number(id)
-    );
 
-    // Como el HTML actual todavía no tiene un contenedor
-    // separado para mostrar las bajas, lo creamos una sola vez.
+    // Buscar el contenedor.
+    // Si todavía no existe, se crea una sola vez.
+    let bloque =
+      document.getElementById('historialBajasEjemplar');
 
-    let bloque = document.getElementById(
-      'historialBajasEjemplar'
-    );
+    const bloqueHistorial =
+      document.getElementById('bloqueHistorialEjemplar');
 
-    const expediente =
-      document.getElementById('expedienteEjemplar');
 
-    if (!bloque && expediente) {
+    if (!bloque && bloqueHistorial) {
+
       bloque = document.createElement('div');
 
       bloque.id = 'historialBajasEjemplar';
+
       bloque.className = 'detail-list';
 
       bloque.style.marginTop = '20px';
 
-      expediente.appendChild(bloque);
+      bloqueHistorial.appendChild(bloque);
+
     }
+
 
     if (!bloque) return;
 
-    if (!bajasEjemplar.length) {
-      bloque.innerHTML = `
-        <strong>🚨 Historial de bajas</strong>
 
+    // Mostrarlo porque esta función se utiliza
+    // cuando el usuario solicita ver el historial.
+    bloque.style.display = 'block';
+
+
+    // --------------------------------------------------------
+    // SIN BAJAS REGISTRADAS
+    // --------------------------------------------------------
+
+    if (!bajas.length) {
+
+      bloque.innerHTML = `
         <div
           class="tiny-note"
           style="margin-top:12px;"
         >
-          Este ejemplar no tiene bajas registradas.
+          🚪 Este animal no tiene salidas o bajas registradas.
         </div>
       `;
 
       return;
     }
 
+
+    // --------------------------------------------------------
+    // MOSTRAR HISTORIAL
+    // --------------------------------------------------------
+
     bloque.innerHTML = `
-      <strong>🚨 Historial de bajas</strong>
 
-      <div style="margin-top:12px;">
+      <div style="margin-top:15px;">
 
-        ${bajasEjemplar.map(baja => `
-          <div
-            class="animal-admin-card"
-            style="margin-bottom:12px;"
-          >
+        <strong>
+          🚪 Historial de salidas o bajas
+        </strong>
 
-            <div class="animal-admin-info">
+        <div style="margin-top:12px;">
 
-              <h4>
-                ${escapeHTMLFront(
-                  String(baja.tipo_baja || 'Baja')
-                )}
-              </h4>
+          ${bajas.map(baja => `
 
-              <p>
-                <strong>Fecha:</strong>
+            <div
+              class="animal-admin-card"
+              style="margin-bottom:12px;"
+            >
+
+              <div class="animal-admin-info">
+
+                <h4>
+                  ${escapeHTMLFront(
+                    nombreTipoBaja(
+                      baja.tipo_baja
+                    )
+                  )}
+                </h4>
+
+
+                <p>
+                  <strong>Fecha:</strong>
+                  ${
+                    baja.fecha_baja
+                      ? escapeHTMLFront(
+                          String(
+                            baja.fecha_baja
+                          ).slice(0, 10)
+                        )
+                      : 'N/A'
+                  }
+                </p>
+
+
+                <p>
+                  <strong>Motivo:</strong>
+                  ${escapeHTMLFront(
+                    baja.motivo ||
+                    'Sin información'
+                  )}
+                </p>
+
+
+                <p>
+                  <strong>Responsable:</strong>
+                  ${escapeHTMLFront(
+                    baja.responsable ||
+                    'No especificado'
+                  )}
+                </p>
+
+
                 ${
-                  baja.fecha_baja
-                    ? escapeHTMLFront(
-                        String(baja.fecha_baja).slice(0, 10)
-                      )
-                    : 'N/A'
+                  baja.destino_traslado
+                    ? `
+                      <p>
+                        <strong>
+                          Destino del traslado:
+                        </strong>
+
+                        ${escapeHTMLFront(
+                          baja.destino_traslado
+                        )}
+                      </p>
+                    `
+                    : ''
                 }
-              </p>
 
-              <p>
-                <strong>Motivo:</strong>
-                ${escapeHTMLFront(
-                  baja.motivo || 'Sin información'
-                )}
-              </p>
 
-              <p>
-                <strong>Responsable:</strong>
-                ${escapeHTMLFront(
-                  baja.responsable || 'N/A'
-                )}
-              </p>
+                ${
+                  baja.descripcion
+                    ? `
+                      <p>
+                        <strong>
+                          Descripción:
+                        </strong>
 
-              ${
-                baja.destino_traslado
-                  ? `
-                    <p>
-                      <strong>Destino:</strong>
-                      ${escapeHTMLFront(
-                        baja.destino_traslado
-                      )}
-                    </p>
-                  `
-                  : ''
-              }
+                        ${escapeHTMLFront(
+                          baja.descripcion
+                        )}
+                      </p>
+                    `
+                    : ''
+                }
 
-              ${
-                baja.descripcion
-                  ? `
-                    <p>
-                      <strong>Descripción:</strong>
-                      ${escapeHTMLFront(
-                        baja.descripcion
-                      )}
-                    </p>
-                  `
-                  : ''
-              }
 
-              ${
-                baja.documento_url
-                  ? `
-                    <p>
-                      <strong>Documento:</strong>
-                      ${escapeHTMLFront(
-                        baja.documento_url
-                      )}
-                    </p>
-                  `
-                  : ''
-              }
+                ${
+                  baja.documento_url
+                    ? `
+                      <p>
+                        <strong>
+                          Documento:
+                        </strong>
+
+                        ${escapeHTMLFront(
+                          baja.documento_url
+                        )}
+                      </p>
+                    `
+                    : ''
+                }
+
+              </div>
 
             </div>
 
-          </div>
-        `).join('')}
+          `).join('')}
+
+        </div>
 
       </div>
     `;
 
   } catch (error) {
+
     console.error(
       'Error cargando historial de bajas:',
       error
     );
+
+    mensajeEjemplares(
+      '❌ No se pudo cargar el historial de salidas: ' +
+      error.message,
+      'error'
+    );
+
   }
+
 }
 
 // ============================================================
@@ -3097,7 +3630,74 @@ async function cargarReportesEjemplar(id) {
   }
 }
 
+// ============================================================
+// BUSCAR Y FILTRAR EJEMPLARES
+// ============================================================
 
+document.getElementById('btnBuscarEjemplar')
+  ?.addEventListener('click', async () => {
+
+    await cargarEjemplares();
+
+  });
+
+  document.getElementById('btnLimpiarBusquedaEjemplar')
+  ?.addEventListener('click', async () => {
+
+    const buscar =
+      document.getElementById('buscarEjemplar');
+
+    const estado =
+      document.getElementById('filtroEstadoEjemplar');
+
+    const situacion =
+      document.getElementById('filtroSituacionEjemplar');
+
+
+    if (buscar) {
+      buscar.value = '';
+    }
+
+
+    if (estado) {
+      estado.value = '';
+    }
+
+
+    // Volvemos a mostrar por defecto
+    // solamente los animales que siguen en el zoológico.
+    if (situacion) {
+      situacion.value = 'activos';
+    }
+
+
+    await cargarEjemplares();
+
+  });
+  document.getElementById('buscarEjemplar')
+  ?.addEventListener('keydown', async event => {
+
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+
+    await cargarEjemplares();
+
+  });
+  document.getElementById('filtroEstadoEjemplar')
+  ?.addEventListener('change', async () => {
+
+    await cargarEjemplares();
+
+  });
+
+
+document.getElementById('filtroSituacionEjemplar')
+  ?.addEventListener('change', async () => {
+
+    await cargarEjemplares();
+
+  });
 // ============================================================
 // GUARDAR REPORTE SEMANAL
 // ============================================================
@@ -3218,9 +3818,104 @@ async function guardarReporteSemanal() {
     // Dejamos el responsable por si la misma persona
     // captura varios reportes durante el día.
 
-    await cargarReportesEjemplar(ejemplarId);
-    await cargarEjemplares();
-    await cargarResumenEjemplares();
+   // ========================================================
+// ACTUALIZAR MÓDULO DESPUÉS DE GUARDAR LA REVISIÓN
+// ========================================================
+
+// Actualizar historial de revisiones del animal
+await cargarReportesEjemplar(ejemplarId);
+
+// Actualizar tabla de animales
+await cargarEjemplares();
+
+// Actualizar resumen superior
+await cargarResumenEjemplares();
+
+// Actualizar animales pendientes de revisión
+await cargarRevisionesPendientes();
+
+
+// ========================================================
+// LIMPIAR FORMULARIO DE REVISIÓN
+// ========================================================
+
+const reporteFecha =
+  document.getElementById('reporteFecha');
+
+const reporteCondicion =
+  document.getElementById('reporteCondicion');
+
+const reporteAlimentacion =
+  document.getElementById('reporteAlimentacion');
+
+const reporteComportamiento =
+  document.getElementById('reporteComportamiento');
+
+const reportePeso =
+  document.getElementById('reportePeso');
+
+const reporteResponsable =
+  document.getElementById('reporteResponsable');
+
+const reporteObservaciones =
+  document.getElementById('reporteObservaciones');
+
+const reporteRecomendaciones =
+  document.getElementById('reporteRecomendaciones');
+
+
+if (reporteFecha) {
+  reporteFecha.value = todayISO();
+}
+
+if (reporteCondicion) {
+  reporteCondicion.value = 'buena';
+}
+
+if (reporteAlimentacion) {
+  reporteAlimentacion.value = 'normal';
+}
+
+if (reporteComportamiento) {
+  reporteComportamiento.value = 'normal';
+}
+
+if (reportePeso) {
+  reportePeso.value = '';
+}
+
+if (reporteResponsable) {
+  reporteResponsable.value = '';
+}
+
+if (reporteObservaciones) {
+  reporteObservaciones.value = '';
+}
+
+if (reporteRecomendaciones) {
+  reporteRecomendaciones.value = '';
+}
+
+
+// Mantener asociado el formulario al animal actual
+const reporteEjemplarId =
+  document.getElementById('reporteEjemplarId');
+
+if (reporteEjemplarId) {
+  reporteEjemplarId.value = ejemplarId;
+}
+
+
+// ========================================================
+// CERRAR FORMULARIO DE REVISIÓN
+// ========================================================
+
+const bloqueReporte =
+  document.getElementById('bloqueReporteEjemplar');
+
+if (bloqueReporte) {
+  bloqueReporte.style.display = 'none';
+}
 
   } catch (error) {
     mensajeEjemplares(
@@ -3276,9 +3971,47 @@ async function registrarBajaEjemplar() {
     return;
   }
 
-  const ejemplar = ejemplaresCache.find(
-    e => Number(e.id) === ejemplarId
+// ========================================================
+// OBTENER DATOS DIRECTAMENTE DEL EJEMPLAR
+// No dependemos de la tabla filtrada.
+// ========================================================
+
+let ejemplar = null;
+
+try {
+
+  const resEjemplar = await fetch(
+    `${API_BASE}/api/ejemplares/${ejemplarId}`
   );
+
+  const dataEjemplar = await resEjemplar.json();
+
+  if (!resEjemplar.ok || !dataEjemplar.success) {
+    throw new Error(
+      dataEjemplar.message ||
+      'No se pudo consultar el ejemplar'
+    );
+  }
+
+  ejemplar =
+    dataEjemplar.ejemplar ||
+    dataEjemplar.data ||
+    null;
+
+} catch (error) {
+
+  console.error(
+    'Error consultando ejemplar antes de registrar baja:',
+    error
+  );
+
+  mensajeEjemplares(
+    '❌ No se pudo consultar la información del animal.',
+    'error'
+  );
+
+  return;
+}
 
   const nombre = ejemplar?.nombre || 'este ejemplar';
 
@@ -3346,16 +4079,29 @@ async function registrarBajaEjemplar() {
     if (bajaDocumento) bajaDocumento.value = '';
     if (bajaMotivo) bajaMotivo.value = '';
     if (bajaDescripcion) bajaDescripcion.value = '';
-// Recargar la tabla y el resumen porque
-// el estado del ejemplar cambió.
+// ========================================================
+// ACTUALIZAR INFORMACIÓN DESPUÉS DE REGISTRAR LA BAJA
+// ========================================================
+
+// Actualizar tabla de ejemplares
 await cargarEjemplares();
+
+// Actualizar tarjetas/resumen
 await cargarResumenEjemplares();
 
-// Recargar el expediente actualizado.
-await verExpedienteEjemplar(ejemplarId);
+// Actualizar revisiones pendientes
+await cargarRevisionesPendientes();
 
-// Actualizar también el historial de bajas.
+// Actualizar historial de bajas del animal
 await cargarHistorialBajasEjemplar(ejemplarId);
+
+// Ocultar el formulario de baja
+const bloqueBaja =
+  document.getElementById('bloqueBajaEjemplar');
+
+if (bloqueBaja) {
+  bloqueBaja.style.display = 'none';
+}
 
   } catch (error) {
     mensajeEjemplares(
@@ -3516,16 +4262,285 @@ document.getElementById('btnGuardarEjemplar')
   ?.addEventListener('click', guardarEjemplar);
 
 
-// Actualizar listado y resumen
-document.getElementById('btnActualizarEjemplares')
+// ============================================================
+// ACTUALIZAR MÓDULO DE EJEMPLARES
+// ============================================================
+
+document.getElementById('btnActualizarModuloEjemplares')
   ?.addEventListener('click', async () => {
 
-    await cargarEjemplares();
-    await cargarResumenEjemplares();
+    try {
+
+      mensajeEjemplares(
+        '🔄 Actualizando información de ejemplares...',
+        'ok'
+      );
+
+      // Actualizar tabla de ejemplares
+      await cargarEjemplares();
+
+      // Actualizar tarjetas/resumen superior
+      await cargarResumenEjemplares();
+
+      // Si hay un ejemplar abierto, actualizar su expediente
+      if (ejemplarSeleccionadoId) {
+        await verExpedienteEjemplar(ejemplarSeleccionadoId);
+      }
+
+      mensajeEjemplares(
+        '✅ Información actualizada correctamente.',
+        'ok'
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Error actualizando módulo de ejemplares:',
+        error
+      );
+
+      mensajeEjemplares(
+        '❌ No se pudo actualizar la información.',
+        'error'
+      );
+
+    }
+
+  });
+
+// ============================================================
+// ACCIONES DEL EXPEDIENTE DEL EJEMPLAR
+// ============================================================
+
+
+// ------------------------------------------------------------
+// MOSTRAR FORMULARIO DE REVISIÓN SEMANAL
+// ------------------------------------------------------------
+
+document.getElementById('btnMostrarReporteEjemplar')
+  ?.addEventListener('click', () => {
+
+    const bloqueReporte =
+      document.getElementById('bloqueReporteEjemplar');
+
+    const bloqueHistorial =
+      document.getElementById('bloqueHistorialEjemplar');
+
+    const bloqueBaja =
+      document.getElementById('bloqueBajaEjemplar');
+
+    if (!bloqueReporte) return;
+
+    // Mostrar revisión
+    bloqueReporte.style.display = 'block';
+
+    // Ocultar las otras secciones
+    if (bloqueHistorial) {
+      bloqueHistorial.style.display = 'none';
+    }
+
+    if (bloqueBaja) {
+      bloqueBaja.style.display = 'none';
+    }
+
+    // Colocar el ejemplar seleccionado
+    const reporteId =
+      document.getElementById('reporteEjemplarId');
+
+    if (reporteId && ejemplarSeleccionadoId) {
+      reporteId.value = ejemplarSeleccionadoId;
+    }
+
+    // Fecha de hoy por defecto
+    const reporteFecha =
+      document.getElementById('reporteFecha');
+
+    if (reporteFecha && !reporteFecha.value) {
+      reporteFecha.value = todayISO();
+    }
+
+    bloqueReporte.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
 
   });
 
 
+// ------------------------------------------------------------
+// MOSTRAR HISTORIAL DE REVISIONES
+// ------------------------------------------------------------
+
+document.getElementById('btnMostrarHistorialEjemplar')
+  ?.addEventListener('click', async () => {
+
+    if (!ejemplarSeleccionadoId) {
+      mensajeEjemplares(
+        '❌ Primero selecciona un ejemplar.',
+        'error'
+      );
+      return;
+    }
+
+    const bloqueReporte =
+      document.getElementById('bloqueReporteEjemplar');
+
+    const bloqueHistorial =
+      document.getElementById('bloqueHistorialEjemplar');
+
+    const bloqueBaja =
+      document.getElementById('bloqueBajaEjemplar');
+
+    // Ocultar las otras secciones
+    if (bloqueReporte) {
+      bloqueReporte.style.display = 'none';
+    }
+
+    if (bloqueBaja) {
+      bloqueBaja.style.display = 'none';
+    }
+
+    // Mostrar historial
+    if (bloqueHistorial) {
+      bloqueHistorial.style.display = 'block';
+    }
+
+   // Cargar revisiones anteriores
+await cargarReportesEjemplar(
+  ejemplarSeleccionadoId
+);
+
+// Cargar salidas o bajas anteriores
+await cargarHistorialBajasEjemplar(
+  ejemplarSeleccionadoId
+);
+
+    if (bloqueHistorial) {
+      bloqueHistorial.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+  });
+
+
+// ------------------------------------------------------------
+// MOSTRAR FORMULARIO DE SALIDA / BAJA
+// ------------------------------------------------------------
+
+document.getElementById('btnMostrarBajaEjemplar')
+  ?.addEventListener('click', () => {
+
+    if (!ejemplarSeleccionadoId) {
+      mensajeEjemplares(
+        '❌ Primero selecciona un ejemplar.',
+        'error'
+      );
+      return;
+    }
+
+    const bloqueReporte =
+      document.getElementById('bloqueReporteEjemplar');
+
+    const bloqueHistorial =
+      document.getElementById('bloqueHistorialEjemplar');
+
+    const bloqueBaja =
+      document.getElementById('bloqueBajaEjemplar');
+
+    // Ocultar las otras secciones
+    if (bloqueReporte) {
+      bloqueReporte.style.display = 'none';
+    }
+
+    if (bloqueHistorial) {
+      bloqueHistorial.style.display = 'none';
+    }
+
+    // Mostrar baja
+    if (bloqueBaja) {
+      bloqueBaja.style.display = 'block';
+    }
+
+    // Colocar automáticamente el ID
+    const bajaId =
+      document.getElementById('bajaEjemplarId');
+
+    if (bajaId) {
+      bajaId.value = ejemplarSeleccionadoId;
+    }
+
+    // Fecha actual si está vacía
+    const bajaFecha =
+      document.getElementById('bajaFecha');
+
+    if (bajaFecha && !bajaFecha.value) {
+      bajaFecha.value = todayISO();
+    }
+
+    if (bloqueBaja) {
+      bloqueBaja.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+  });
+
+
+// ------------------------------------------------------------
+// CERRAR EXPEDIENTE
+// ------------------------------------------------------------
+
+document.getElementById('btnCerrarExpedienteEjemplar')
+  ?.addEventListener('click', () => {
+
+    const expediente =
+      document.getElementById('expedienteEjemplar');
+
+    const bloqueReporte =
+      document.getElementById('bloqueReporteEjemplar');
+
+    const bloqueHistorial =
+      document.getElementById('bloqueHistorialEjemplar');
+
+    const bloqueBaja =
+      document.getElementById('bloqueBajaEjemplar');
+
+    // Ocultar secciones internas
+    if (bloqueReporte) {
+      bloqueReporte.style.display = 'none';
+    }
+
+    if (bloqueHistorial) {
+      bloqueHistorial.style.display = 'none';
+    }
+
+    if (bloqueBaja) {
+      bloqueBaja.style.display = 'none';
+    }
+
+    // Ocultar expediente completo
+    if (expediente) {
+      expediente.style.display = 'none';
+    }
+
+    // Quitar selección actual
+    ejemplarSeleccionadoId = null;
+
+    // Regresar a la lista
+    const tabla =
+      document.getElementById('tbodyEjemplares');
+
+    if (tabla) {
+      tabla.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+
+  });
 // Guardar reporte semanal
 document.getElementById('btnGuardarReporte')
   ?.addEventListener('click', guardarReporteSemanal);
@@ -3572,6 +4587,7 @@ if (bajaFecha) {
 
 await cargarEjemplares();
 await cargarResumenEjemplares();
+await cargarRevisionesPendientes();
 
 await cargarDashboard();
 await cargarVentas();

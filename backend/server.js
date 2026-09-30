@@ -1839,10 +1839,12 @@ app.get('/api/dashboard-animales', async (req, res) => {
 `);
 
         const [reportesSemanaRows] = await pool.query(`
-            SELECT COUNT(*) AS total
-            FROM reportes_animales
-            WHERE YEARWEEK(fecha_reporte, 1) = YEARWEEK(CURDATE(), 1)
-        `);
+    SELECT
+        COUNT(DISTINCT ejemplar_id) AS total
+    FROM reportes_animales
+    WHERE YEARWEEK(fecha_reporte, 1)
+        = YEARWEEK(CURDATE(), 1)
+`);
 
        const [pendientesRows] = await pool.query(`
     SELECT COUNT(*) AS total
@@ -1896,17 +1898,100 @@ app.get('/api/dashboard-animales', async (req, res) => {
     }
 });
 
+// ==========================================================
+// 📝 ANIMALES PENDIENTES DE REVISIÓN ESTA SEMANA
+// ==========================================================
+app.get('/api/ejemplares-pendientes-revision', async (req, res) => {
+    try {
+
+        const [rows] = await pool.query(`
+            SELECT
+                e.id,
+                e.codigo,
+                e.nombre,
+                e.especie,
+                e.sexo,
+                e.habitat_asignado,
+                e.estado_actual,
+                e.fecha_llegada,
+
+                (
+                    SELECT MAX(r.fecha_reporte)
+                    FROM reportes_animales r
+                    WHERE r.ejemplar_id = e.id
+                ) AS ultima_revision
+
+            FROM ejemplares e
+
+            WHERE e.activo = 1
+
+              AND e.estado_actual IN (
+                  'activo',
+                  'observacion',
+                  'tratamiento'
+              )
+
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM reportes_animales r
+                  WHERE r.ejemplar_id = e.id
+                    AND YEARWEEK(r.fecha_reporte, 1)
+                        = YEARWEEK(CURDATE(), 1)
+              )
+
+            ORDER BY
+                e.nombre ASC
+        `);
+
+        res.json({
+            success: true,
+            total: rows.length,
+            pendientes: rows
+        });
+
+    } catch (error) {
+
+        console.error(
+            'Error obteniendo animales pendientes de revisión:',
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message:
+                'Error obteniendo los animales pendientes de revisión',
+            error: error.message
+        });
+    }
+});
 
 // ==========================================================
 // 🐯 LISTAR TODOS LOS EJEMPLARES
 // ==========================================================
 app.get('/api/ejemplares', async (req, res) => {
     try {
-        const estado = String(req.query.estado || '').trim();
-        const buscar = String(req.query.buscar || '').trim();
+        const estado =
+            String(req.query.estado || '').trim();
+
+        const buscar =
+            String(req.query.buscar || '').trim();
+
+        const situacion =
+            String(req.query.situacion || '').trim();
 
         const condiciones = [];
         const valores = [];
+
+        // ==========================================
+        // FILTRO: animales actuales / historial
+        // ==========================================
+        if (situacion === 'activos') {
+            condiciones.push('e.activo = 1');
+        }
+
+        if (situacion === 'bajas') {
+            condiciones.push('e.activo = 0');
+        }
 
         if (estado) {
             condiciones.push('e.estado_actual = ?');
@@ -2021,12 +2106,44 @@ app.get('/api/ejemplares/:id', async (req, res) => {
             ORDER BY fecha_baja DESC, id DESC
         `, [id]);
 
-        res.json({
-            success: true,
-            ejemplar: ejemplares[0],
-            reportes,
-            bajas
-        });
+       const ejemplar = ejemplares[0];
+
+const ultimoReporte =
+    reportes.length > 0
+        ? reportes[0]
+        : null;
+
+const ultimaBaja =
+    bajas.length > 0
+        ? bajas[0]
+        : null;
+
+res.json({
+    success: true,
+
+    ejemplar,
+
+    situacion: {
+        en_zoologico: Number(ejemplar.activo) === 1,
+
+        texto:
+            Number(ejemplar.activo) === 1
+                ? 'Actualmente en el zoológico'
+                : 'Ya no se encuentra activo en el zoológico',
+
+        estado_actual: ejemplar.estado_actual
+    },
+
+    ultimo_reporte: ultimoReporte,
+
+    ultima_baja: ultimaBaja,
+
+    total_reportes: reportes.length,
+
+    reportes,
+
+    bajas
+});
 
     } catch (error) {
         res.status(500).json({
@@ -2426,6 +2543,93 @@ app.post('/api/reportes-animales', async (req, res) => {
     }
 });
 
+// ==========================================================
+// 🩺 ÚLTIMA REVISIÓN DE UN EJEMPLAR
+// ==========================================================
+app.get(
+    '/api/reportes-animales/ultimo/:ejemplarId',
+    async (req, res) => {
+        try {
+            const ejemplarId =
+                Number(req.params.ejemplarId);
+
+            if (
+                !Number.isInteger(ejemplarId) ||
+                ejemplarId <= 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID de ejemplar no válido'
+                });
+            }
+
+            // Comprobar que el animal exista
+            const [ejemplarRows] = await pool.query(`
+                SELECT
+                    id,
+                    codigo,
+                    nombre,
+                    estado_actual,
+                    activo
+                FROM ejemplares
+                WHERE id = ?
+                LIMIT 1
+            `, [ejemplarId]);
+
+            if (!ejemplarRows.length) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Animal no encontrado'
+                });
+            }
+
+            // Obtener únicamente su revisión más reciente
+            const [reportes] = await pool.query(`
+                SELECT *
+                FROM reportes_animales
+                WHERE ejemplar_id = ?
+                ORDER BY
+                    fecha_reporte DESC,
+                    id DESC
+                LIMIT 1
+            `, [ejemplarId]);
+
+            res.json({
+                success: true,
+
+                ejemplar: {
+                    id: ejemplarRows[0].id,
+                    codigo: ejemplarRows[0].codigo,
+                    nombre: ejemplarRows[0].nombre,
+                    estado_actual:
+                        ejemplarRows[0].estado_actual,
+                    activo:
+                        Number(ejemplarRows[0].activo)
+                },
+
+                tiene_reporte: reportes.length > 0,
+
+                ultimo_reporte:
+                    reportes.length > 0
+                        ? reportes[0]
+                        : null
+            });
+
+        } catch (error) {
+            console.error(
+                'Error obteniendo última revisión:',
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message:
+                    'Error obteniendo la última revisión del animal',
+                error: error.message
+            });
+        }
+    }
+);
 
 // ==========================================================
 // 📚 REPORTES DE UN EJEMPLAR
@@ -2627,7 +2831,120 @@ const [ejemplarRows] = await conn.query(`
     }
 });
 
+// ==========================================================
+// 🚪 ANIMALES QUE YA SALIERON DEL ZOOLÓGICO
+// Historial sencillo para el panel administrativo
+// ==========================================================
+app.get('/api/ejemplares-historial-salidas', async (req, res) => {
+    try {
 
+        const [rows] = await pool.query(`
+            SELECT
+                e.id,
+                e.codigo,
+                e.nombre,
+                e.especie,
+                e.sexo,
+                e.habitat_asignado,
+                e.estado_actual,
+                e.activo,
+
+                b.id AS baja_id,
+                b.tipo_baja,
+                b.fecha_baja,
+                b.motivo,
+                b.descripcion,
+                b.destino_traslado,
+                b.responsable
+
+            FROM ejemplares e
+
+            INNER JOIN bajas_animales b
+                ON b.id = (
+                    SELECT b2.id
+                    FROM bajas_animales b2
+                    WHERE b2.ejemplar_id = e.id
+                    ORDER BY
+                        b2.fecha_baja DESC,
+                        b2.id DESC
+                    LIMIT 1
+                )
+
+            WHERE e.activo = 0
+
+            ORDER BY
+                b.fecha_baja DESC,
+                e.nombre ASC
+        `);
+
+        res.json({
+            success: true,
+            total: rows.length,
+            salidas: rows
+        });
+
+    } catch (error) {
+
+        console.error(
+            'Error obteniendo historial de salidas:',
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message:
+                'Error obteniendo el historial de salidas de animales',
+            error: error.message
+        });
+    }
+});
+
+// ==========================================================
+// 📁 HISTORIAL DE BAJAS DE UN EJEMPLAR
+// ==========================================================
+app.get('/api/bajas-animales/ejemplar/:ejemplarId', async (req, res) => {
+    try {
+        const ejemplarId = Number(req.params.ejemplarId);
+
+        if (!Number.isInteger(ejemplarId) || ejemplarId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de ejemplar no válido'
+            });
+        }
+
+        const [rows] = await pool.query(`
+            SELECT
+                b.*,
+                e.codigo,
+                e.nombre,
+                e.especie,
+                e.sexo
+            FROM bajas_animales b
+            INNER JOIN ejemplares e
+                ON e.id = b.ejemplar_id
+            WHERE b.ejemplar_id = ?
+            ORDER BY
+                b.fecha_baja DESC,
+                b.id DESC
+        `, [ejemplarId]);
+
+        res.json({
+            success: true,
+            total: rows.length,
+            bajas: rows
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo bajas del ejemplar:', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Error obteniendo historial de bajas del ejemplar',
+            error: error.message
+        });
+    }
+});
 // ==========================================================
 // 📁 HISTORIAL DE BAJAS
 // ==========================================================

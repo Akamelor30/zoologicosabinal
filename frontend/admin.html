@@ -1010,13 +1010,13 @@
   <div class="cards">
 
     <div class="card">
-      <h4>🟢 Ejemplares activos</h4>
+      <h4>🐾 Animales en el zoológico</h4>
       <div class="value" id="ejTotalActivos">0</div>
       <small>Actualmente activos</small>
     </div>
 
     <div class="card">
-      <h4>🟡 En observación</h4>
+      <h4>👀 En observación</h4>
       <div class="value" id="ejTotalObservacion">0</div>
       <small>Requieren seguimiento</small>
     </div>
@@ -1028,7 +1028,7 @@
     </div>
 
     <div class="card">
-      <h4>⚠️ Reportes pendientes</h4>
+      <h4>📝 Revisiones pendientes</h4>
       <div class="value" id="ejReportesPendientes">0</div>
       <small>Sin reporte de esta semana</small>
     </div>
@@ -1038,6 +1038,37 @@
       <div class="value" id="ejTrasladosMes">0</div>
       <small>Ejemplares trasladados</small>
     </div>
+
+    <!-- ================================================== -->
+<!-- AYUDA RÁPIDA DEL MÓDULO -->
+<!-- ================================================== -->
+
+<div
+  class="tiny-note"
+  style="
+    margin-top:15px;
+    padding:14px;
+  "
+>
+  💡 <strong>¿Qué hago aquí?</strong>
+  Registra un animal cuando llegue al zoológico y realiza
+  una revisión cada semana para mantener actualizado su
+  seguimiento.
+</div>
+<div
+  class="taquilla-actions"
+  style="margin-top:15px;"
+>
+
+  <button
+    type="button"
+    class="btn btn-secondary"
+    id="btnActualizarModuloEjemplares"
+  >
+    🔄 Actualizar información
+  </button>
+
+</div>
 
   </div>
 
@@ -1049,24 +1080,42 @@
   <div id="msgEjemplares" class="message"></div>
 
 
-  <!-- ================================================== -->
-  <!-- REGISTRAR NUEVO EJEMPLAR -->
-  <!-- ================================================== -->
+<!-- ================================================== -->
+<!-- BOTÓN PARA ABRIR REGISTRO DE EJEMPLAR -->
+<!-- ================================================== -->
 
-  <div
-    class="taquilla-card venta-form-card"
-    style="margin-top:20px;"
+<div style="margin-top:20px;">
+
+  <button
+    type="button"
+    class="btn btn-primary"
+    id="btnNuevoEjemplar"
   >
+    ➕ Registrar nuevo animal
+  </button>
+
+</div>
+
+
+<!-- ================================================== -->
+<!-- REGISTRAR NUEVO EJEMPLAR -->
+<!-- ================================================== -->
+
+<div
+  class="taquilla-card venta-form-card"
+  id="formEjemplarCard"
+  style="display:none; margin-top:20px;"
+>
 
     <div class="section-title-row">
 
       <div>
-        <h4>➕ Registrar nuevo ejemplar</h4>
+       <h4>🐾 Registrar nuevo animal</h4>
 
-        <p>
-          Captura los datos individuales del animal para crear
-          su expediente interno.
-        </p>
+<p>
+  Ingresa los datos del animal para crear su expediente.
+  Los campos con * son obligatorios.
+</p>
       </div>
 
       <span class="pill-soft">
@@ -1324,13 +1373,13 @@
 
     <div class="taquilla-actions">
 
-      <button
-        type="button"
-        class="btn btn-primary"
-        id="btnGuardarEjemplar"
-      >
-        💾 Guardar ejemplar
-      </button>
+     <button
+  type="button"
+  class="btn btn-primary"
+  id="btnGuardarEjemplar"
+>
+  💾 Guardar animal
+</button>
 
       <button
         type="button"
@@ -1341,17 +1390,74 @@
       </button>
 
       <button
-        type="button"
-        class="btn btn-secondary"
-        id="btnActualizarEjemplares"
-      >
-        🔄 Actualizar lista
-      </button>
+  type="button"
+  class="btn btn-secondary"
+  id="btnCancelarEjemplar"
+>
+  ✖ Cancelar
+</button>
 
     </div>
 
   </div>
+<!-- ================================================== -->
+<!-- REVISIONES PENDIENTES DE ESTA SEMANA -->
+<!-- ================================================== -->
 
+<div
+  class="taquilla-card"
+  id="bloqueRevisionesPendientes"
+  style="margin-top:20px;"
+>
+
+  <div class="section-title-row">
+
+    <div>
+
+      <h4>
+        📝 Revisiones de esta semana
+      </h4>
+
+      <p>
+        Aquí aparecen los animales que todavía necesitan
+        su revisión semanal.
+      </p>
+
+    </div>
+
+    <span
+      class="pill-soft"
+      id="contadorRevisionesPendientes"
+    >
+      0 pendientes
+    </span>
+
+  </div>
+
+
+  <!-- MENSAJE CUANDO TODO ESTÁ COMPLETO -->
+  <div
+    id="mensajeSinRevisionesPendientes"
+    class="tiny-note"
+    style="
+      display:none;
+      margin-top:15px;
+      padding:15px;
+    "
+  >
+    ✅ Todas las revisiones de esta semana están completas.
+  </div>
+
+
+  <!-- AQUÍ ADMIN.JS MOSTRARÁ LOS ANIMALES -->
+  <div
+    id="listaRevisionesPendientes"
+    class="detail-list"
+    style="margin-top:15px;"
+  >
+  </div>
+
+</div>
 
   <!-- ================================================== -->
   <!-- EJEMPLARES REGISTRADOS -->
@@ -1378,7 +1484,108 @@
       </span>
 
     </div>
+<!-- ================================================== -->
+<!-- 🔎 BUSCAR Y FILTRAR EJEMPLARES -->
+<!-- ================================================== -->
 
+<div
+  class="filters"
+  style="margin-top:20px;"
+>
+
+  <!-- BUSCADOR -->
+  <div class="field">
+
+    <label for="buscarEjemplar">
+      🔎 Buscar animal
+    </label>
+
+    <input
+      type="text"
+      id="buscarEjemplar"
+      placeholder="Nombre, código o especie"
+      autocomplete="off"
+    >
+
+  </div>
+
+
+  <!-- ESTADO -->
+  <div class="field">
+
+    <label for="filtroEstadoEjemplar">
+      Estado
+    </label>
+
+    <select id="filtroEstadoEjemplar">
+
+      <option value="">
+        Todos
+      </option>
+
+      <option value="activo">
+        🟢 Activos
+      </option>
+
+      <option value="observacion">
+        🟡 En observación
+      </option>
+
+      <option value="tratamiento">
+        🩺 En tratamiento
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <!-- SITUACIÓN -->
+  <div class="field">
+
+    <label for="filtroSituacionEjemplar">
+      ¿Dónde está?
+    </label>
+
+    <select id="filtroSituacionEjemplar">
+
+      <option value="activos">
+        🐾 En el zoológico
+      </option>
+
+      <option value="">
+        Todos
+      </option>
+
+      <option value="bajas">
+        📁 Ya no están en el zoológico
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <!-- BOTÓN BUSCAR -->
+  <button
+    type="button"
+    class="btn btn-primary"
+    id="btnBuscarEjemplar"
+  >
+    🔎 Buscar
+  </button>
+
+
+  <!-- BOTÓN LIMPIAR -->
+  <button
+    type="button"
+    class="btn btn-secondary"
+    id="btnLimpiarBusquedaEjemplar"
+  >
+    🧹 Limpiar
+  </button>
+
+</div>
 
     <div class="table-wrap">
 
@@ -1441,9 +1648,13 @@
 
       </div>
 
-      <span class="pill-soft">
-        Historial interno
-      </span>
+     <button
+  type="button"
+  class="btn btn-outline"
+  id="btnCerrarExpedienteEjemplar"
+>
+  ✖ Cerrar
+</button>
 
     </div>
 
@@ -1455,16 +1666,50 @@
       class="detail-grid"
     >
     </div>
+<!-- ================================================== -->
+<!-- ACCIONES RÁPIDAS DEL EXPEDIENTE -->
+<!-- ================================================== -->
 
+<div
+  class="taquilla-actions"
+  style="margin-top:20px;"
+>
+
+  <button
+    type="button"
+    class="btn btn-primary"
+    id="btnMostrarReporteEjemplar"
+  >
+    📝 Hacer revisión
+  </button>
+
+  <button
+    type="button"
+    class="btn btn-secondary"
+    id="btnMostrarHistorialEjemplar"
+  >
+    📚 Ver historial
+  </button>
+
+  <button
+    type="button"
+    class="btn btn-danger"
+    id="btnMostrarBajaEjemplar"
+  >
+    🚪 Registrar salida / baja
+  </button>
+
+</div>
 
     <!-- ================================================== -->
     <!-- REPORTE SEMANAL -->
     <!-- ================================================== -->
 
     <div
-      class="taquilla-card"
-      style="margin-top:20px;"
-    >
+  class="taquilla-card"
+  id="bloqueReporteEjemplar"
+  style="display:none; margin-top:20px;"
+>
 
       <div class="section-title-row">
 
@@ -1712,10 +1957,11 @@
     <!-- HISTORIAL DE REPORTES -->
     <!-- ================================================== -->
 
-    <div
-      class="detail-list"
-      style="margin-top:20px;"
-    >
+  <div
+  class="detail-list"
+  id="bloqueHistorialEjemplar"
+  style="display:none; margin-top:20px;"
+>
 
       <strong>
         📚 Historial de reportes semanales
@@ -1735,10 +1981,11 @@
     <!-- REGISTRAR BAJA -->
     <!-- ================================================== -->
 
-    <div
-      class="taquilla-card"
-      style="margin-top:20px;"
-    >
+  <div
+  class="taquilla-card"
+  id="bloqueBajaEjemplar"
+  style="display:none; margin-top:20px;"
+>
 
       <div class="section-title-row">
 
