@@ -1393,6 +1393,274 @@ app.get('/api/panel-me', requirePanelAuth, (req, res) => {
     });
 });
 
+ // ============================================================
+ // DONACIONES - RECIBIR SOLICITUD PÚBLICA
+ // ============================================================
+
+ app.post('/api/donaciones/solicitar', async (req, res) => {
+   try {
+     const datos = req.body || {};
+
+     const texto = (valor, maximo) =>
+       String(valor ?? '').trim().slice(0, maximo);
+
+     const nombre_donante = texto(datos.nombre_donante, 150);
+     const telefono_donante = texto(datos.telefono_donante, 20);
+     const correo_donante = texto(datos.correo_donante, 150);
+     const nombre_animal = texto(datos.nombre_animal, 100);
+     const especie = texto(datos.especie, 150);
+     const nombre_cientifico = texto(datos.nombre_cientifico, 180);
+     const edad_aproximada = texto(datos.edad_aproximada, 50);
+     const procedencia = texto(datos.procedencia, 200);
+     const estado_salud = texto(datos.estado_salud, 2000);
+     const alimentacion = texto(datos.alimentacion, 200);
+     const comportamiento = texto(datos.comportamiento, 2000);
+     const motivo_donacion = texto(datos.motivo_donacion, 3000);
+     const observaciones = texto(datos.observaciones, 3000);
+
+     const sexo = ['macho', 'hembra', 'desconocido']
+       .includes(datos.sexo)
+         ? datos.sexo
+         : 'desconocido';
+
+     if (
+       !nombre_donante ||
+       !telefono_donante ||
+       !especie ||
+       !motivo_donacion
+     ) {
+       return res.status(400).json({
+         success: false,
+         message: 'Completa los campos obligatorios.'
+       });
+     }
+
+     if (
+       correo_donante &&
+       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo_donante)
+     ) {
+       return res.status(400).json({
+         success: false,
+         message: 'El correo electrónico no es válido.'
+       });
+     }
+
+     const folio = 'DON-' +
+       crypto.randomBytes(8).toString('hex').toUpperCase();
+
+     await pool.query(`
+       INSERT INTO solicitudes_donacion (
+         folio, origen, nombre_donante,
+         telefono_donante, correo_donante,
+         nombre_animal, especie, nombre_cientifico,
+         sexo, edad_aproximada, procedencia,
+         estado_salud, alimentacion, comportamiento,
+         motivo_donacion, observaciones, estado
+       )
+       VALUES (
+         ?, 'web', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente'
+       )
+     `, [
+       folio,
+       nombre_donante,
+       telefono_donante,
+       correo_donante || null,
+       nombre_animal || null,
+       especie,
+       nombre_cientifico || null,
+       sexo,
+       edad_aproximada || null,
+       procedencia || null,
+       estado_salud || null,
+       alimentacion || null,
+       comportamiento || null,
+       motivo_donacion,
+       observaciones || null
+     ]);
+
+     return res.status(201).json({
+       success: true,
+       message: 'Solicitud recibida. Pendiente de revisión.',
+       folio,
+       estado: 'pendiente'
+     });
+
+   } catch (error) {
+     console.error('Error al guardar solicitud de donación:', error);
+
+     return res.status(500).json({
+       success: false,
+       message: 'No se pudo guardar la solicitud.'
+     });
+   }
+ });
+
+ // ============================================================
+// DONACIONES - CONSULTAR SOLICITUDES (SOLO ADMINISTRADOR)
+// ============================================================
+
+app.get('/api/donaciones/solicitudes', requirePanelAuth, async (req, res) => {
+  try {
+
+    // Verificar que sea el administrador del panel
+    const administradorUsuario = String(
+      req.panelUser?.username || ''
+    ).trim();
+
+    if (administradorUsuario !== PANEL_USER) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permiso para consultar las donaciones.'
+      });
+    }
+
+    const estadosPermitidos = [
+      'pendiente',
+      'autorizada',
+      'rechazada'
+    ];
+
+    const estado = String(req.query.estado || '').trim();
+
+    if (estado && !estadosPermitidos.includes(estado)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Estado de solicitud no válido.'
+      });
+    }
+
+    let sql = `
+      SELECT *
+      FROM solicitudes_donacion
+    `;
+
+    const parametros = [];
+
+    if (estado) {
+      sql += ' WHERE estado = ?';
+      parametros.push(estado);
+    }
+
+    sql += ' ORDER BY id DESC LIMIT 200';
+
+    const [solicitudes] = await pool.query(sql, parametros);
+
+    return res.json({
+      success: true,
+      total: solicitudes.length,
+      solicitudes
+    });
+
+  } catch (error) {
+    console.error('Error al consultar donaciones:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'No se pudieron consultar las solicitudes.'
+    });
+  }
+});
+
+ // ============================================================
+ // DONACIONES - AUTORIZAR O RECHAZAR SOLICITUD
+ // ============================================================
+
+ app.patch('/api/donaciones/solicitudes/:id/decision',
+   requirePanelAuth,
+   async (req, res) => {
+     try {
+       const id = Number(req.params.id);
+       const estado = String(req.body?.estado || '').trim();
+       const observaciones = String(
+         req.body?.observaciones_admin || ''
+       ).trim();
+
+       if (!Number.isSafeInteger(id) || id <= 0) {
+         return res.status(400).json({
+           success: false,
+           message: 'Identificador de solicitud inválido.'
+         });
+       }
+
+       if (!['autorizada', 'rechazada'].includes(estado)) {
+         return res.status(400).json({
+           success: false,
+           message: 'La decisión debe ser autorizada o rechazada.'
+         });
+       }
+
+       if (estado === 'rechazada' && !observaciones) {
+         return res.status(400).json({
+           success: false,
+           message: 'Debes indicar el motivo del rechazo.'
+         });
+       }
+
+       if (observaciones.length > 3000) {
+         return res.status(400).json({
+           success: false,
+           message: 'Las observaciones son demasiado largas.'
+         });
+       }
+
+       // Obtener el identificador del usuario autenticado.
+       // Este campo debe coincidir con el middleware de tu proyecto.
+      // IDENTIFICAR AL ADMINISTRADOR AUTENTICADO
+const administradorUsuario = String(
+  req.panelUser?.username || ''
+).trim();
+
+// Verificar que corresponda al administrador configurado
+if (!administradorUsuario || administradorUsuario !== PANEL_USER) {
+  return res.status(403).json({
+    success: false,
+    message: 'No tienes permiso para revisar donaciones.'
+  });
+}
+
+     // Registrar la decisión del administrador
+const [resultado] = await pool.query(`
+  UPDATE solicitudes_donacion
+  SET estado = ?,
+      observaciones_admin = ?,
+      revisado_por = NULL,
+      fecha_revision = NOW()
+  WHERE id = ?
+    AND estado = 'pendiente'
+`, [
+  estado,
+  observaciones || null,
+  id
+]);
+
+       if (resultado.affectedRows === 0) {
+         return res.status(409).json({
+           success: false,
+           message: 'La solicitud no existe o ya fue revisada.'
+         });
+       }
+
+       return res.json({
+         success: true,
+         message: estado === 'autorizada'
+           ? 'Solicitud autorizada correctamente.'
+           : 'Solicitud rechazada correctamente.',
+         estado
+       });
+
+     } catch (error) {
+       console.error('Error al resolver donación:', error);
+
+       return res.status(500).json({
+         success: false,
+         message: 'No se pudo actualizar la solicitud.'
+       });
+     }
+   }
+ );
+
+
+
 // ============================================
 // 🛡️ RUTAS PRIVADAS DEL PANEL
 // ============================================
