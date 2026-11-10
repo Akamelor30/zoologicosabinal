@@ -1,0 +1,355 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Donación de animales | Zoológico El Sabinal</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f5ef;
+      color: #243728;
+    }
+
+    header {
+      background: #174c38;
+      color: white;
+      padding: 24px 16px;
+      text-align: center;
+    }
+
+    header h1 { margin: 0 0 8px; }
+
+    header p { margin: 0; }
+
+    main {
+      max-width: 850px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 26px;
+      box-shadow: 0 5px 20px #00000012;
+    }
+
+    h2 {
+      color: #174c38;
+      border-bottom: 2px solid #dce9df;
+      padding-bottom: 10px;
+      margin-top: 28px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #b9c9bc;
+      border-radius: 7px;
+      font: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid #32865a;
+    }
+
+    .nota {
+      background: #fff8e5;
+      border-left: 4px solid #d6a531;
+      padding: 14px;
+      border-radius: 6px;
+      line-height: 1.5;
+    }
+
+    button {
+      background: #176443;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 24px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 15px;
+      width: 100%;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    #resultado {
+      margin-top: 18px;
+      padding: 15px;
+      border-radius: 8px;
+      display: none;
+      white-space: pre-line;
+    }
+
+    .exito {
+      background: #e2f5e7;
+      color: #175b32;
+    }
+
+    .error {
+      background: #ffe9e9;
+      color: #9b2222;
+    }
+
+    .volver {
+      display: inline-block;
+      margin: 0 0 20px;
+      color: #176443;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #647267;
+    }
+
+    @media (max-width: 650px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Parque Ecológico y Recreativo El Sabinal</h1>
+  <p>Solicitud de donación de animales</p>
+</header>
+
+<main>
+  <a class="volver" href="/index.html">
+    ← Regresar al inicio
+  </a>
+
+  <div class="card">
+    <h1>Formulario de donación</h1>
+
+    <p>
+      Completa la información para solicitar la
+      donación de un animal al zoológico.
+    </p>
+
+    <div class="nota">
+      <strong>Importante:</strong>
+      El envío de este formulario no significa
+      que la donación haya sido aceptada.
+      El personal del zoológico revisará la solicitud.
+      No traslades ni entregues al animal sin
+      recibir indicaciones del personal autorizado.
+    </div>
+
+    <form id="formDonacion">
+
+      <h2>1. Datos del donante</h2>
+
+      <div class="grid">
+        <div class="field">
+          <label>Nombre completo *</label>
+          <input name="nombre_donante"
+                 maxlength="150" required>
+        </div>
+
+        <div class="field">
+          <label>Teléfono *</label>
+          <input name="telefono_donante"
+                 type="tel" maxlength="20" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input name="correo_donante"
+               type="email" maxlength="150">
+      </div>
+
+      <h2>2. Información del animal</h2>
+
+      <div class="grid">
+        <div class="field">
+          <label>Nombre del animal</label>
+          <input name="nombre_animal"
+                 maxlength="100">
+        </div>
+
+        <div class="field">
+          <label>Especie *</label>
+          <input name="especie"
+                 maxlength="150" required
+                 placeholder="Ej. Tortuga">
+        </div>
+
+        <div class="field">
+          <label>Nombre científico</label>
+          <input name="nombre_cientifico"
+                 maxlength="180">
+        </div>
+
+        <div class="field">
+          <label>Sexo</label>
+          <select name="sexo">
+            <option value="desconocido">Desconocido</option>
+            <option value="macho">Macho</option>
+            <option value="hembra">Hembra</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Edad aproximada</label>
+          <input name="edad_aproximada"
+                 maxlength="50"
+                 placeholder="Ej. 2 años">
+        </div>
+
+        <div class="field">
+          <label>Procedencia</label>
+          <input name="procedencia"
+                 maxlength="200"
+                 placeholder="Lugar de origen">
+        </div>
+      </div>
+
+      <h2>3. Condiciones del animal</h2>
+
+      <div class="field">
+        <label>Estado de salud</label>
+        <textarea name="estado_salud"
+                  maxlength="2000"
+                  placeholder="Describe su estado general"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Alimentación</label>
+        <input name="alimentacion"
+               maxlength="200"
+               placeholder="¿Qué alimentos consume?">
+      </div>
+
+      <div class="field">
+        <label>Comportamiento</label>
+        <textarea name="comportamiento"
+                  maxlength="2000"
+                  placeholder="Describe su comportamiento"></textarea>
+      </div>
+
+      <h2>4. Motivo de la donación</h2>
+
+      <div class="field">
+        <label>¿Por qué deseas donar al animal? *</label>
+        <textarea name="motivo_donacion"
+                  maxlength="3000" required></textarea>
+      </div>
+
+      <div class="field">
+        <label>Observaciones adicionales</label>
+        <textarea name="observaciones"
+                  maxlength="3000"></textarea>
+      </div>
+
+      <button type="submit" id="btnEnviar">
+        Enviar solicitud de donación
+      </button>
+
+      <div id="resultado" role="status"
+           aria-live="polite"></div>
+
+    </form>
+  </div>
+</main>
+
+<footer>
+  Parque Ecológico y Recreativo El Sabinal
+</footer>
+
+<script>
+  const formulario = document.getElementById('formDonacion');
+  const boton = document.getElementById('btnEnviar');
+  const resultado = document.getElementById('resultado');
+
+  formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+
+    boton.disabled = true;
+    boton.textContent = 'Enviando solicitud...';
+    resultado.style.display = 'none';
+
+    try {
+      const datos = Object.fromEntries(
+        new FormData(formulario).entries()
+      );
+
+      const respuesta = await fetch(
+        '/api/donaciones/solicitar',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(datos)
+        }
+      );
+
+      const contenido = await respuesta.json();
+
+      if (!respuesta.ok || !contenido.success) {
+        throw new Error(
+          contenido.message || 'No se pudo enviar la solicitud.'
+        );
+      }
+
+      resultado.className = 'exito';
+      resultado.textContent =
+        'Solicitud enviada correctamente.\n' +
+        'Folio: ' + contenido.folio + '\n' +
+        'Estado: Pendiente de revisión.\n' +
+        'Conserva tu folio para futuras consultas.';
+
+      resultado.style.display = 'block';
+      formulario.reset();
+
+    } catch (error) {
+      resultado.className = 'error';
+      resultado.textContent = error.message;
+      resultado.style.display = 'block';
+
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Enviar solicitud de donación';
+    }
+  });
+</script>
+
+</body>
+</html>
