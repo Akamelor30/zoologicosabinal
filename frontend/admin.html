@@ -25,6 +25,9 @@
 <button class="menu-btn" data-panel="promociones">🎯 Promociones web</button>
 <button class="menu-btn" data-panel="animales">🐯 Animales</button>
 <button class="menu-btn" data-panel="ejemplares">🦁 Control de ejemplares</button>
+<button class="menu-btn" data-panel="donaciones">
+  📋 Solicitudes de donación
+</button>
        <a href="/lector.html">📷 Ir al lector QR</a>
 <a href="/">🛒 Ir a la venta pública</a>
 <a href="/panel-logout" class="logout-link">🚪 Cerrar sesión</a>
@@ -2172,7 +2175,62 @@
   </div>
 
 </section>
+<!-- SOLICITUDES DE DONACIÓN -->
+<section class="panel" id="panel-donaciones">
 
+  <div class="bi-hero">
+    <div>
+      <span class="module-kicker">Control zoológico interno</span>
+      <h3>📋 Solicitudes de donación</h3>
+      <p>
+        Consulta las solicitudes de animales recibidas
+        y autoriza o rechaza su ingreso al zoológico.
+      </p>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="field">
+      <label for="filtroDonaciones">Estado</label>
+      <select id="filtroDonaciones">
+        <option value="">Todas</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="autorizada">Autorizadas</option>
+        <option value="rechazada">Rechazadas</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary" id="btnConsultarDonaciones">
+      🔄 Consultar solicitudes
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Donante</th>
+          <th>Animal</th>
+          <th>Especie</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody id="tbodyDonaciones">
+        <tr>
+          <td colspan="6">
+            Consulta las solicitudes para mostrar los registros.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="msgDonaciones" class="message"></div>
+
+</section>
     </main>
   </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
