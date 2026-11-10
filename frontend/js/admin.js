@@ -4618,3 +4618,214 @@ await cargarBI();
   }, 30000);
 });
 
+/* ==========================================================
+   MÓDULO DE SOLICITUDES DE DONACIÓN - EL SABINAL
+   ========================================================== */
+
+(() => {
+  const $don = id => document.getElementById(id);
+
+  function mensajeDonacion(texto, error = false) {
+    const caja = $don('msgDonaciones');
+    if (!caja) return;
+
+    caja.textContent = texto;
+    caja.className = `message show ${error ? 'error' : 'ok'}`;
+  }
+
+  function celdaDonacion(fila, texto) {
+    const td = document.createElement('td');
+    td.textContent = texto == null ? '—' : String(texto);
+    fila.appendChild(td);
+    return td;
+  }
+
+  async function cargarSolicitudesDonacion() {
+    const tabla = $don('tbodyDonaciones');
+    const filtro = $don('filtroDonaciones');
+
+    if (!tabla || !filtro) return;
+
+    tabla.replaceChildren();
+    mensajeDonacion('Consultando solicitudes...');
+
+    try {
+      const estado = filtro.value;
+      const url = '/api/donaciones/solicitudes' +
+        (estado ? '?estado=' + encodeURIComponent(estado) : '');
+
+      const respuesta = await fetch(url, {
+        credentials: 'same-origin'
+      });
+
+      if (respuesta.status === 401) {
+        throw new Error('Tu sesión terminó. Inicia sesión nuevamente.');
+      }
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok || !datos.success) {
+        throw new Error(datos.message || 'Error al consultar.');
+      }
+
+      const solicitudes = Array.isArray(datos.solicitudes)
+        ? datos.solicitudes
+        : [];
+
+      if (solicitudes.length === 0) {
+        const fila = document.createElement('tr');
+        const celda = celdaDonacion(
+          fila,
+          'No hay solicitudes para mostrar.'
+        );
+        celda.colSpan = 6;
+        tabla.appendChild(fila);
+      }
+
+      solicitudes.forEach(solicitud => {
+        const fila = document.createElement('tr');
+
+        celdaDonacion(fila, solicitud.folio);
+        celdaDonacion(fila, solicitud.nombre_donante);
+        celdaDonacion(fila, solicitud.nombre_animal);
+        celdaDonacion(fila, solicitud.especie);
+        celdaDonacion(fila, solicitud.estado);
+
+        const acciones = document.createElement('td');
+
+        const detalle = document.createElement('button');
+        detalle.type = 'button';
+        detalle.className = 'btn btn-secondary';
+        detalle.textContent = 'Ver detalle';
+        detalle.addEventListener('click', () => {
+          alert(
+            'Folio: ' + (solicitud.folio || '—') +
+            '\nDonante: ' + (solicitud.nombre_donante || '—') +
+            '\nTeléfono: ' + (solicitud.telefono_donante || '—') +
+            '\nCorreo: ' + (solicitud.correo_donante || '—') +
+            '\nAnimal: ' + (solicitud.nombre_animal || '—') +
+            '\nEspecie: ' + (solicitud.especie || '—') +
+            '\nProcedencia: ' + (solicitud.procedencia || '—') +
+            '\nEstado de salud: ' + (solicitud.estado_salud || '—') +
+            '\nObservaciones: ' + (solicitud.observaciones || '—') +
+            '\nDecisión: ' + (solicitud.estado || '—') +
+            '\nObservaciones administrativas: ' +
+              (solicitud.observaciones_admin || '—')
+          );
+        });
+        acciones.appendChild(detalle);
+
+        if (solicitud.estado === 'pendiente') {
+          const autorizar = document.createElement('button');
+          autorizar.type = 'button';
+          autorizar.className = 'btn btn-primary';
+          autorizar.textContent = 'Autorizar';
+          autorizar.addEventListener('click', () =>
+            decidirDonacion(solicitud.id, 'autorizada')
+          );
+
+          const rechazar = document.createElement('button');
+          rechazar.type = 'button';
+          rechazar.className = 'btn btn-danger';
+          rechazar.textContent = 'Rechazar';
+          rechazar.addEventListener('click', () =>
+            decidirDonacion(solicitud.id, 'rechazada')
+          );
+
+          acciones.append(' ', autorizar, ' ', rechazar);
+        }
+
+        fila.appendChild(acciones);
+        tabla.appendChild(fila);
+      });
+
+      mensajeDonacion(
+        'Solicitudes encontradas: ' + solicitudes.length
+      );
+
+    } catch (error) {
+      mensajeDonacion(error.message, true);
+    }
+  }
+
+  async function decidirDonacion(id, estado) {
+    let observaciones = '';
+
+    if (estado === 'rechazada') {
+      const motivo = prompt('Escribe el motivo del rechazo:');
+      if (motivo === null) return;
+
+      observaciones = motivo.trim();
+
+      if (!observaciones) {
+        mensajeDonacion('Debes indicar el motivo del rechazo.', true);
+        return;
+      }
+    } else {
+      if (!confirm('¿Deseas autorizar esta solicitud?')) return;
+    }
+
+    if (observaciones.length > 3000) {
+      mensajeDonacion('Las observaciones son demasiado largas.', true);
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(
+        '/api/donaciones/solicitudes/' +
+          encodeURIComponent(id) + '/decision',
+        {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            estado,
+            observaciones_admin: observaciones
+          })
+        }
+      );
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok || !datos.success) {
+        throw new Error(datos.message || 'No se pudo guardar.');
+      }
+
+      await cargarSolicitudesDonacion();
+
+      mensajeDonacion(datos.message || 'Decisión registrada.');
+
+    } catch (error) {
+      mensajeDonacion(error.message, true);
+    }
+  }
+
+  function iniciarModuloDonaciones() {
+    const consultar = $don('btnConsultarDonaciones');
+    const filtro = $don('filtroDonaciones');
+
+    if (!consultar || !filtro) return;
+
+    consultar.addEventListener('click', cargarSolicitudesDonacion);
+    filtro.addEventListener('change', cargarSolicitudesDonacion);
+
+    document.querySelectorAll(
+      '.menu-btn[data-panel="donaciones"]'
+    ).forEach(boton => {
+      boton.addEventListener('click', cargarSolicitudesDonacion);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener(
+      'DOMContentLoaded',
+      iniciarModuloDonaciones
+    );
+  } else {
+    iniciarModuloDonaciones();
+  }
+})();
+
+
