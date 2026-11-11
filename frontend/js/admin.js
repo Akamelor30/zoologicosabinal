@@ -1,4 +1,207 @@
 
+const SabinalUI = (() => {
+  let ventana = null;
+
+  function iniciar() {
+    if (ventana) return;
+
+    const estilos = document.createElement('style');
+    estilos.textContent = `
+      .sabinal-fondo {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: rgba(0, 25, 12, .7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .sabinal-ventana {
+        width: 100%;
+        max-width: 520px;
+        max-height: 85vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 15px 45px #0005;
+        color: #24372b;
+      }
+      .sabinal-titulo {
+        padding: 20px;
+        margin: 0;
+        color: #17643a;
+        border-bottom: 1px solid #ddd;
+        font-size: 20px;
+      }
+      .sabinal-contenido {
+        padding: 20px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.6;
+      }
+      .sabinal-entrada {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid #aaa;
+        border-radius: 8px;
+        font: inherit;
+      }
+      .sabinal-botones {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 0 20px 20px;
+      }
+      .sabinal-boton {
+        padding: 11px 18px;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .sabinal-aceptar {
+        background: #17643a;
+        color: white;
+      }
+      .sabinal-cancelar {
+        background: #e8eeea;
+        color: #24372b;
+      }
+    `;
+    document.head.appendChild(estilos);
+  
+
+    ventana = document.createElement('div');
+    ventana.className = 'sabinal-fondo';
+    ventana.style.display = 'none';
+    ventana.innerHTML = `
+      <div class="sabinal-ventana" role="dialog"
+           aria-modal="true" aria-labelledby="sabinalTitulo">
+        <h2 id="sabinalTitulo" class="sabinal-titulo"></h2>
+        <div class="sabinal-contenido"></div>
+        <div class="sabinal-botones"></div>
+      </div>
+    `;
+    document.body.appendChild(ventana);
+  }
+
+  function abrir(titulo, mensaje, tipo = 'confirmar', inicial = '') {
+    return new Promise(resolve => {
+      iniciar();
+
+      const tituloEl = ventana.querySelector('.sabinal-titulo');
+      const contenido = ventana.querySelector('.sabinal-contenido');
+      const botones = ventana.querySelector('.sabinal-botones');
+
+      tituloEl.textContent = titulo;
+      contenido.replaceChildren();
+      botones.replaceChildren();
+
+      const texto = document.createElement('div');
+      texto.textContent = mensaje;
+      contenido.appendChild(texto);
+
+      let entrada = null;
+
+      if (tipo === 'solicitar') {
+        entrada = document.createElement('input');
+        entrada.className = 'sabinal-entrada';
+        entrada.value = inicial;
+        entrada.setAttribute('aria-label', titulo);
+        contenido.appendChild(entrada);
+      }
+
+      let terminado = false;
+
+      function cerrar(resultado) {
+        if (terminado) return;
+        terminado = true;
+        ventana.style.display = 'none';
+        ventana.removeEventListener('keydown', teclado);
+        ventana.removeEventListener('click', fuera);
+        resolve(resultado);
+      }
+
+      function teclado(evento) {
+        if (evento.key === 'Escape') {
+          cerrar(tipo === 'solicitar' ? null : false);
+        }
+        if (evento.key === 'Enter' && entrada) {
+          cerrar(entrada.value);
+        }
+      }
+
+      function fuera(evento) {
+        if (evento.target === ventana) {
+          cerrar(tipo === 'solicitar' ? null : false);
+        }
+      }
+
+      function boton(etiqueta, clase, accion) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sabinal-boton ' + clase;
+        b.textContent = etiqueta;
+        b.addEventListener('click', accion);
+        botones.appendChild(b);
+        return b;
+      }
+
+      if (tipo !== 'detalle') {
+        boton('Cancelar', 'sabinal-cancelar', () => {
+          cerrar(tipo === 'solicitar' ? null : false);
+        });
+      }
+
+      const aceptar = boton(
+        tipo === 'detalle' ? 'Cerrar' : 'Aceptar',
+        'sabinal-aceptar',
+        () => cerrar(entrada ? entrada.value : true)
+      );
+
+      ventana.addEventListener('keydown', teclado);
+      ventana.addEventListener('click', fuera);
+      ventana.style.display = 'flex';
+
+      (entrada || aceptar).focus();
+    });
+  }
+
+  return {
+    confirmar: mensaje =>
+      abrir('Confirmar acción', mensaje),
+
+    solicitar: (mensaje, inicial = '') =>
+      abrir('Ingresar información', mensaje, 'solicitar', inicial),
+
+    detalleDonacion: solicitud => {
+      const campos = [
+        ['Folio', solicitud.folio],
+        ['Donante', solicitud.nombre_donante],
+        ['Teléfono', solicitud.telefono_donante],
+        ['Correo', solicitud.correo_donante],
+        ['Animal', solicitud.nombre_animal],
+        ['Especie', solicitud.especie],
+        ['Procedencia', solicitud.procedencia],
+        ['Estado de salud', solicitud.estado_salud],
+        ['Observaciones', solicitud.observaciones],
+        ['Decisión', solicitud.estado],
+        ['Observaciones administrativas', solicitud.observaciones_admin]
+      ];
+
+      const mensaje = campos
+        .map(([nombre, valor]) => `${nombre}: ${valor ?? '—'}`)
+        .join('\n\n');
+
+      return abrir('Detalle de donación', mensaje, 'detalle');
+    }
+  };
+})();
+
+
 const API_BASE = '';
 let ventaActual = null;
 let categoriasTaquilla = [];
@@ -320,10 +523,15 @@ async function cancelarVentaActual() {
     return;
   }
 
-  const confirmado = confirm(`¿Seguro que deseas cancelar la venta ${ventaActual.folio}?`);
+  const confirmado = await SabinalUI.confirmar(
+  `¿Seguro que deseas cancelar la venta ${ventaActual.folio}?`
+);
   if (!confirmado) return;
 
-  const motivo = prompt('Motivo de cancelación:', 'Cancelación manual desde panel admin');
+  const motivo = await SabinalUI.solicitar(
+  'Motivo de cancelación:',
+  'Cancelación manual desde panel admin'
+);
   if (motivo === null) return;
 
   try {
@@ -355,10 +563,12 @@ async function confirmarPagoActual() {
     return;
   }
 
-  const confirmado = confirm(`¿Confirmar pago de la reservación ${ventaActual.folio}?`);
+ const confirmado = await SabinalUI.confirmar(
+  `¿Confirmar pago de la reservación ${ventaActual.folio}?`
+);
   if (!confirmado) return;
 
-  const metodoPago = prompt(
+ const metodoPago = await SabinalUI.solicitar(
     'Método de pago: efectivo, tarjeta, transferencia o cortesia',
     'efectivo'
   );
@@ -414,7 +624,9 @@ async function registrarEntradaManualActual() {
     return;
   }
 
-  const confirmado = confirm(`¿Registrar entrada manual para el folio ${ventaActual.folio}?`);
+  const confirmado = await SabinalUI.confirmar(
+  `¿Registrar entrada manual para el folio ${ventaActual.folio}?`
+);
   if (!confirmado) return;
 
   try {
@@ -4697,22 +4909,9 @@ await cargarBI();
         detalle.type = 'button';
         detalle.className = 'btn btn-secondary';
         detalle.textContent = 'Ver detalle';
-        detalle.addEventListener('click', () => {
-          alert(
-            'Folio: ' + (solicitud.folio || '—') +
-            '\nDonante: ' + (solicitud.nombre_donante || '—') +
-            '\nTeléfono: ' + (solicitud.telefono_donante || '—') +
-            '\nCorreo: ' + (solicitud.correo_donante || '—') +
-            '\nAnimal: ' + (solicitud.nombre_animal || '—') +
-            '\nEspecie: ' + (solicitud.especie || '—') +
-            '\nProcedencia: ' + (solicitud.procedencia || '—') +
-            '\nEstado de salud: ' + (solicitud.estado_salud || '—') +
-            '\nObservaciones: ' + (solicitud.observaciones || '—') +
-            '\nDecisión: ' + (solicitud.estado || '—') +
-            '\nObservaciones administrativas: ' +
-              (solicitud.observaciones_admin || '—')
-          );
-        });
+    detalle.addEventListener('click', () => {
+  SabinalUI.detalleDonacion(solicitud);
+});
         acciones.appendChild(detalle);
 
         if (solicitud.estado === 'pendiente') {
@@ -4849,7 +5048,9 @@ function prepararRegistroDonacion(solicitud) {
     let observaciones = '';
 
     if (estado === 'rechazada') {
-      const motivo = prompt('Escribe el motivo del rechazo:');
+      const motivo = await SabinalUI.solicitar(
+  'Escribe el motivo del rechazo:'
+);
       if (motivo === null) return;
 
       observaciones = motivo.trim();
@@ -4859,7 +5060,9 @@ function prepararRegistroDonacion(solicitud) {
         return;
       }
     } else {
-      if (!confirm('¿Deseas autorizar esta solicitud?')) return;
+     if (!await SabinalUI.confirmar(
+  '¿Deseas autorizar esta solicitud?'
+)) return;
     }
 
     if (observaciones.length > 3000) {
