@@ -1660,6 +1660,224 @@ const [resultado] = await pool.query(`
  );
 
 
+ // ============================================================
+ // DONACIONES - CONFIRMAR RECEPCIÓN Y REGISTRAR EJEMPLAR
+ // ============================================================
+ app.post(
+   '/api/donaciones/solicitudes/:id/registrar-ejemplar',
+   requirePanelAuth,
+   async (req, res) => {
+     const administrador = String(
+       req.panelUser?.username || ''
+     ).trim();
+
+     if (!administrador || administrador !== PANEL_USER) {
+       return res.status(403).json({
+         success: false,
+         message: 'No tienes permiso para registrar donaciones.'
+       });
+     }
+
+     const solicitudId = Number(req.params.id);
+     if (!Number.isSafeInteger(solicitudId) || solicitudId <= 0) {
+       return res.status(400).json({
+         success: false,
+         message: 'Identificador de solicitud inválido.'
+       });
+     }
+
+     const datos = req.body || {};
+
+     const nombre = String(datos.nombre || '').trim();
+     const especie = String(datos.especie || '').trim();
+     const fechaLlegada = String(datos.fecha_llegada || '').trim();
+     const sexo = String(datos.sexo || 'desconocido').trim();
+
+     const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fechaLlegada);
+     const fechaObjeto = new Date(`${fechaLlegada}T12:00:00Z`);
+     const fechaReal = fechaValida &&
+       !Number.isNaN(fechaObjeto.getTime()) &&
+       fechaObjeto.toISOString().slice(0, 10) === fechaLlegada;
+
+     if (!nombre || !especie || !fechaReal) {
+       return res.status(400).json({
+         success: false,
+         message: 'Nombre, especie y fecha de llegada válida son obligatorios.'
+       });
+     }
+
+     if (!['macho', 'hembra', 'desconocido'].includes(sexo)) {
+       return res.status(400).json({
+         success: false,
+         message: 'Sexo del animal no válido.'
+       });
+     }
+
+     if (nombre.length > 100 || especie.length > 150) {
+       return res.status(400).json({
+         success: false,
+         message: 'El nombre o la especie excede el tamaño permitido.'
+       });
+     }
+
+     const opcionales = {
+       nombre_cientifico: 180,
+       edad_aproximada: 50,
+       procedencia: 200,
+       habitat_asignado: 150,
+       alimentacion: 200,
+       condicion_ingreso: 255,
+       imagen_url: 500
+     };
+
+     for (const [campo, maximo] of Object.entries(opcionales)) {
+       if (String(datos[campo] ?? '').length > maximo) {
+         return res.status(400).json({
+           success: false,
+           message: `El campo ${campo} es demasiado largo.`
+         });
+       }
+     }
+
+     if (datos.fecha_nacimiento &&
+         !/^\d{4}-\d{2}-\d{2}$/.test(String(datos.fecha_nacimiento))) {
+       return res.status(400).json({
+         success: false,
+         message: 'Fecha de nacimiento inválida.'
+       });
+     }
+
+     const opcional = campo => {
+       const valor = String(datos[campo] ?? '').trim();
+       return valor || null;
+     };
+
+     let conexion;
+
+     try {
+       conexion = await pool.getConnection();
+       await conexion.beginTransaction();
+
+       // Bloqueamos la solicitud mientras se registra.
+       const [solicitudes] = await conexion.query(
+         `SELECT id, folio, estado, ejemplar_id
+          FROM solicitudes_donacion
+          WHERE id = ?
+          FOR UPDATE`,
+         [solicitudId]
+       );
+
+       if (!solicitudes.length) {
+         await conexion.rollback();
+         return res.status(404).json({
+           success: false,
+           message: 'Solicitud de donación no encontrada.'
+         });
+       }
+
+       const solicitud = solicitudes[0];
+
+       if (solicitud.estado !== 'autorizada') {
+         await conexion.rollback();
+         return res.status(409).json({
+           success: false,
+           message: 'Solo puedes registrar donaciones autorizadas.'
+         });
+       }
+
+       if (solicitud.ejemplar_id !== null) {
+         await conexion.rollback();
+         return res.status(409).json({
+           success: false,
+           message: 'Esta donación ya tiene un ejemplar registrado.'
+         });
+       }
+
+       // Crear el animal físico.
+       const codigoTemporal =
+         `TEMP-${crypto.randomBytes(10).toString('hex')}`;
+
+       const [resultado] = await conexion.query(
+         `INSERT INTO ejemplares (
+           codigo, nombre, especie, nombre_cientifico,
+           sexo, fecha_nacimiento, edad_aproximada,
+           fecha_llegada, procedencia, habitat_asignado,
+           alimentacion, estado_actual, condicion_ingreso,
+           descripcion, imagen_url, activo
+         ) VALUES (
+           ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+           'activo', ?, ?, ?, 1
+         )`,
+         [
+           codigoTemporal,
+           nombre,
+           especie,
+           opcional('nombre_cientifico'),
+           sexo,
+           opcional('fecha_nacimiento'),
+           opcional('edad_aproximada'),
+           fechaLlegada,
+           opcional('procedencia'),
+           opcional('habitat_asignado'),
+           opcional('alimentacion'),
+           opcional('condicion_ingreso'),
+           opcional('descripcion'),
+           opcional('imagen_url')
+         ]
+       );
+
+       const ejemplarId = Number(resultado.insertId);
+       const codigo = `ANI-${String(ejemplarId).padStart(4, '0')}`;
+
+       await conexion.query(
+         `UPDATE ejemplares SET codigo = ? WHERE id = ?`,
+         [codigo, ejemplarId]
+       );
+
+       // Vincular la donación con el ejemplar recién creado.
+       await conexion.query(
+         `UPDATE solicitudes_donacion
+          SET ejemplar_id = ?
+          WHERE id = ?`,
+         [ejemplarId, solicitudId]
+       );
+
+       await conexion.commit();
+
+       return res.status(201).json({
+         success: true,
+         message: 'Ejemplar registrado y vinculado correctamente.',
+         folio_donacion: solicitud.folio,
+         ejemplar: {
+           id: ejemplarId,
+           codigo,
+           nombre,
+           especie
+         }
+       });
+
+     } catch (error) {
+       if (conexion) {
+         try {
+           await conexion.rollback();
+         } catch (rollbackError) {
+           console.error('Error al revertir donación:', rollbackError);
+         }
+       }
+
+       console.error('Error registrando ejemplar donado:', error);
+
+       return res.status(500).json({
+         success: false,
+         message: 'No se pudo registrar el ejemplar donado.'
+       });
+
+     } finally {
+       if (conexion) conexion.release();
+     }
+   }
+ );
+
 
 // ============================================
 // 🛡️ RUTAS PRIVADAS DEL PANEL

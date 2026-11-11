@@ -4735,6 +4735,28 @@ await cargarBI();
           acciones.append(' ', autorizar, ' ', rechazar);
         }
 
+if (solicitud.estado === 'autorizada') {
+  if (solicitud.ejemplar_id == null) {
+    const registrar = document.createElement('button');
+
+    registrar.type = 'button';
+    registrar.className = 'btn btn-primary';
+    registrar.textContent = '🐾 Registrar ejemplar';
+
+    registrar.addEventListener('click', () => {
+      prepararRegistroDonacion(solicitud);
+    });
+
+    acciones.append(' ', registrar);
+  } else {
+    const registrado = document.createElement('span');
+    registrado.textContent =
+      '✅ Ejemplar registrado (#' + solicitud.ejemplar_id + ')';
+
+    acciones.append(' ', registrado);
+  }
+}
+
         fila.appendChild(acciones);
         tabla.appendChild(fila);
       });
@@ -4747,6 +4769,81 @@ await cargarBI();
       mensajeDonacion(error.message, true);
     }
   }
+
+function prepararRegistroDonacion(solicitud) {
+  const obtener = id => document.getElementById(id);
+
+  const asignar = (id, valor) => {
+    const campo = obtener(id);
+    if (campo) campo.value = valor ?? '';
+  };
+
+  if (!solicitud || solicitud.estado !== 'autorizada' ||
+      solicitud.ejemplar_id != null) {
+    mensajeDonacion('La solicitud no está disponible para registro.', true);
+    return;
+  }
+
+  // Abrir el módulo de control de ejemplares.
+  const botonPanel = document.querySelector(
+    '.menu-btn[data-panel="ejemplares"]'
+  );
+
+  if (botonPanel) botonPanel.click();
+
+  // Mostrar el formulario existente.
+  const formulario = obtener('formEjemplarCard');
+
+  if (!formulario) {
+    mensajeDonacion('No se encontró el formulario de ejemplares.', true);
+    return;
+  }
+
+  formulario.style.display = 'block';
+
+  // Vincular el formulario con la solicitud.
+  asignar('solicitudDonacionEjemplarId', solicitud.id);
+
+  const aviso = obtener('avisoDonacionEjemplar');
+  if (aviso) aviso.style.display = 'block';
+
+  const folio = obtener('folioDonacionEjemplar');
+  if (folio) folio.textContent = solicitud.folio || '';
+
+  // Precargar los datos recibidos del donante.
+  asignar('ejNombre', solicitud.nombre_animal || solicitud.especie);
+  asignar('ejEspecie', solicitud.especie);
+  asignar('ejNombreCientifico', solicitud.nombre_cientifico);
+  asignar('ejSexo', solicitud.sexo || 'desconocido');
+  asignar('ejFechaNacimiento', '');
+  asignar('ejEdadAproximada', solicitud.edad_aproximada);
+  asignar('ejFechaLlegada', '');
+  asignar('ejProcedencia', solicitud.procedencia || 'Donación');
+  asignar('ejHabitat', '');
+  asignar('ejAlimentacion', solicitud.alimentacion);
+  asignar('ejEstado', 'observacion');
+  asignar('ejImagen', '');
+  asignar('ejCondicionIngreso', solicitud.estado_salud);
+
+  asignar(
+    'ejDescripcion',
+    [
+      'Donación: ' + (solicitud.folio || ''),
+      'Donante: ' + (solicitud.nombre_donante || ''),
+      solicitud.comportamiento
+        ? 'Comportamiento: ' + solicitud.comportamiento
+        : '',
+      solicitud.observaciones
+        ? 'Observaciones: ' + solicitud.observaciones
+        : ''
+    ].filter(Boolean).join('\n')
+  );
+
+  formulario.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+}
 
   async function decidirDonacion(id, estado) {
     let observaciones = '';

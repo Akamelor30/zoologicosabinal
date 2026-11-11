@@ -1110,6 +1110,31 @@
   style="display:none; margin-top:20px;"
 >
 
+<!-- DATOS DE LA DONACIÓN VINCULADA -->
+<div
+  id="avisoDonacionEjemplar"
+  class="taquilla-alert"
+  style="display:none; margin-bottom:15px;"
+>
+  <strong>🐾 Registro por donación autorizada</strong>
+
+  <p>
+    Folio de donación:
+    <strong id="folioDonacionEjemplar"></strong>
+  </p>
+
+  <p>
+    Confirma que el animal ya fue recibido físicamente
+    antes de guardar su expediente.
+  </p>
+
+  <input
+    type="hidden"
+    id="solicitudDonacionEjemplarId"
+    value=""
+  >
+</div>
+
     <div class="section-title-row">
 
       <div>
@@ -2227,6 +2252,17 @@
       </tbody>
     </table>
   </div>
+
+<!-- INFORMACIÓN SOBRE EL REGISTRO DE DONACIONES -->
+<div class="tiny-note" style="margin-top:15px;">
+  🐾 <strong>Registro de animales donados:</strong>
+  una solicitud autorizada no significa que el animal
+  ya haya ingresado al zoológico.
+
+  Cuando el animal sea recibido físicamente,
+  utiliza la opción "Registrar ejemplar" para crear
+  su expediente y vincularlo con el folio de donación.
+</div>
 
   <div id="msgDonaciones" class="message"></div>
 
