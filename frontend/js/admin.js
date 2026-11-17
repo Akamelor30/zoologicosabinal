@@ -100,9 +100,15 @@ const SabinalUI = (() => {
       contenido.replaceChildren();
       botones.replaceChildren();
 
-      const texto = document.createElement('div');
-      texto.textContent = mensaje;
-      contenido.appendChild(texto);
+     
+if (mensaje instanceof Node) {
+  contenido.appendChild(mensaje);
+} else {
+  const texto = document.createElement('div');
+  texto.textContent = mensaje;
+  contenido.appendChild(texto);
+}
+
 
       let entrada = null;
 
@@ -177,27 +183,83 @@ const SabinalUI = (() => {
     solicitar: (mensaje, inicial = '') =>
       abrir('Ingresar información', mensaje, 'solicitar', inicial),
 
-    detalleDonacion: solicitud => {
-      const campos = [
-        ['Folio', solicitud.folio],
-        ['Donante', solicitud.nombre_donante],
-        ['Teléfono', solicitud.telefono_donante],
-        ['Correo', solicitud.correo_donante],
-        ['Animal', solicitud.nombre_animal],
-        ['Especie', solicitud.especie],
-        ['Procedencia', solicitud.procedencia],
-        ['Estado de salud', solicitud.estado_salud],
-        ['Observaciones', solicitud.observaciones],
-        ['Decisión', solicitud.estado],
-        ['Observaciones administrativas', solicitud.observaciones_admin]
-      ];
 
-      const mensaje = campos
-        .map(([nombre, valor]) => `${nombre}: ${valor ?? '—'}`)
-        .join('\n\n');
+detalleDonacion: solicitud => {
+  const contenedor = document.createElement('div');
+  contenedor.className = 'sabinal-detalle-donacion';
 
-      return abrir('Detalle de donación', mensaje, 'detalle');
-    }
+  function crearSeccion(titulo, campos) {
+    const seccion = document.createElement('section');
+    seccion.className = 'sabinal-seccion';
+
+    const encabezado = document.createElement('h3');
+    encabezado.className = 'sabinal-seccion-titulo';
+    encabezado.textContent = titulo;
+    seccion.appendChild(encabezado);
+
+    const datos = document.createElement('div');
+    datos.className = 'sabinal-datos';
+
+    campos.forEach(([etiqueta, valor, completo = false]) => {
+      const campo = document.createElement('div');
+      campo.className = 'sabinal-campo';
+
+      if (completo) {
+        campo.classList.add('sabinal-campo-completo');
+      }
+
+      const nombre = document.createElement('span');
+      nombre.className = 'sabinal-campo-etiqueta';
+      nombre.textContent = etiqueta;
+
+      const contenido = document.createElement('span');
+      contenido.className = 'sabinal-campo-valor';
+      contenido.textContent =
+        valor === null || valor === undefined || valor === ''
+          ? '—'
+          : String(valor);
+
+      campo.append(nombre, contenido);
+      datos.appendChild(campo);
+    });
+
+    seccion.appendChild(datos);
+    contenedor.appendChild(seccion);
+  }
+
+  crearSeccion('Información del donante', [
+    ['Folio', solicitud.folio],
+    ['Nombre del donante', solicitud.nombre_donante],
+    ['Teléfono', solicitud.telefono_donante],
+    ['Correo electrónico', solicitud.correo_donante]
+  ]);
+
+  crearSeccion('Información del animal', [
+    ['Nombre del animal', solicitud.nombre_animal],
+    ['Especie', solicitud.especie],
+    ['Procedencia', solicitud.procedencia],
+    ['Estado de salud', solicitud.estado_salud]
+  ]);
+
+  crearSeccion('Observaciones de la solicitud', [
+    ['Observaciones', solicitud.observaciones, true]
+  ]);
+
+  crearSeccion('Resolución administrativa', [
+    ['Estado de la solicitud', solicitud.estado],
+    [
+      'Observaciones administrativas',
+      solicitud.observaciones_admin,
+      true
+    ]
+  ]);
+
+  return abrir(
+    'Detalle de solicitud de donación',
+    contenedor,
+    'detalle'
+  );
+}
   };
 })();
 

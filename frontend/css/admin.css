@@ -4460,3 +4460,109 @@
     transition: none;
   }
 }
+
+/* ==========================================
+   EL SABINAL - DETALLE DE DONACIONES
+   ========================================== */
+
+.sabinal-ventana:has(.sabinal-detalle-donacion) {
+  max-width: 760px;
+}
+
+.sabinal-detalle-donacion {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  white-space: normal;
+}
+
+.sabinal-seccion {
+  border: 1px solid #dce8df;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sabinal-seccion-titulo {
+  margin: 0;
+  padding: 12px 16px;
+  background: #edf5ef;
+  color: #17643a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sabinal-datos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px;
+}
+
+.sabinal-campo {
+  min-width: 0;
+}
+
+.sabinal-campo-etiqueta {
+  display: block;
+  margin-bottom: 5px;
+  color: #66766b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sabinal-campo-valor {
+  display: block;
+  color: #24372b;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.sabinal-campo-completo {
+  grid-column: 1 / -1;
+}
+
+.sabinal-estado {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sabinal-estado-pendiente {
+  background: #fff3d6;
+  color: #8a6000;
+}
+
+.sabinal-estado-autorizada {
+  background: #dff3e5;
+  color: #17643a;
+}
+
+.sabinal-estado-rechazada {
+  background: #fde5e5;
+  color: #a12c2c;
+}
+
+.sabinal-observacion {
+  padding: 14px;
+  background: #f6f8f6;
+  border-radius: 8px;
+  color: #34463a;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .sabinal-datos {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .sabinal-detalle-donacion {
+    gap: 14px;
+  }
+}
+
