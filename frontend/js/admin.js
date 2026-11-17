@@ -903,9 +903,9 @@ async function eliminarPromocion(id) {
   const promo = promocionesCache.find(p => Number(p.id) === Number(id));
   const nombre = promo ? promo.nombre : 'esta promoción';
 
-  const confirmado = confirm(
-    `¿Seguro que deseas eliminar "${nombre}"?\n\nSi ya fue usada en ventas, el sistema solo la desactivará para no romper el historial.`
-  );
+  const confirmado = await SabinalUI.confirmar(
+  `¿Seguro que deseas eliminar "${nombre}"?\n\nSi ya fue usada en ventas, el sistema solo la desactivará para no romper el historial.`
+);
 
   if (!confirmado) return;
 
@@ -2541,7 +2541,9 @@ async function eliminarAnimal(id) {
   const animal = animalesCache.find(a => Number(a.id) === Number(id));
   const nombre = animal ? animal.nombre : 'este animal';
 
-  const confirmado = confirm(`¿Seguro que deseas eliminar "${nombre}"?`);
+  const confirmado = await SabinalUI.confirmar(
+  `¿Seguro que deseas eliminar "${nombre}"?`
+);
   if (!confirmado) return;
 
   try {
@@ -3211,9 +3213,9 @@ async function guardarEjemplar() {
     return;
   }
 
-  const confirmado = confirm(
-    `¿Registrar a "${nombre}" como nuevo ejemplar del zoológico?`
-  );
+  const confirmado = await SabinalUI.confirmar(
+  `¿Registrar a "${nombre}" como nuevo ejemplar del zoológico?`
+);
 
   if (!confirmado) return;
 
@@ -3974,9 +3976,9 @@ async function guardarReporteSemanal() {
     return;
   }
 
-  const confirmado = confirm(
-    '¿Guardar el reporte semanal de este ejemplar?'
-  );
+const confirmado = await SabinalUI.confirmar(
+  '¿Guardar el reporte semanal de este ejemplar?'
+);
 
   if (!confirmado) return;
 
@@ -4227,12 +4229,12 @@ try {
 
   const nombre = ejemplar?.nombre || 'este ejemplar';
 
-  const confirmado = confirm(
-    `¿Seguro que deseas registrar la baja de "${nombre}"?\n\n` +
-    `Tipo: ${tipo_baja}\n` +
-    `Fecha: ${fecha_baja}\n\n` +
-    `El expediente y sus reportes anteriores se conservarán.`
-  );
+ const confirmado = await SabinalUI.confirmar(
+  `¿Seguro que deseas registrar la baja de "${nombre}"?\n\n` +
+  `Tipo: ${tipo_baja}\n` +
+  `Fecha: ${fecha_baja}\n\n` +
+  `El expediente y sus reportes anteriores se conservarán.`
+);
 
   if (!confirmado) return;
 
