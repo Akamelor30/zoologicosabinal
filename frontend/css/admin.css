@@ -4298,3 +4298,159 @@
     height: 190px;
   }
 }
+
+/* ==========================================
+   EL SABINAL - VENTANAS MODERNAS
+   Confirmaciones y detalles administrativos
+   ========================================== */
+
+.sabinal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 35, 23, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.sabinal-ventana {
+  width: 100%;
+  max-width: 540px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #ffffff;
+  color: #26352c;
+  border-radius: 16px;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.3);
+  animation: sabinalAparecer 0.2s ease-out;
+}
+
+.sabinal-titulo {
+  margin: 0;
+  padding: 20px 24px;
+  background: #17643a;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  border-radius: 16px 16px 0 0;
+}
+
+.sabinal-contenido {
+  padding: 24px;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sabinal-entrada {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #b7c8bd;
+  border-radius: 9px;
+  font: inherit;
+  outline: none;
+}
+
+.sabinal-entrada:focus {
+  border-color: #17643a;
+  box-shadow: 0 0 0 3px rgba(23, 100, 58, 0.12);
+}
+
+.sabinal-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+
+.sabinal-boton {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.sabinal-boton:hover {
+  transform: translateY(-1px);
+}
+
+.sabinal-aceptar {
+  background: #17643a;
+  color: #ffffff;
+}
+
+.sabinal-aceptar:hover {
+  background: #10502d;
+}
+
+.sabinal-cancelar {
+  background: #e8eeea;
+  color: #26352c;
+}
+
+.sabinal-cancelar:hover {
+  background: #d7e2da;
+}
+
+@keyframes sabinalAparecer {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Adaptación para celulares */
+
+@media (max-width: 600px) {
+  .sabinal-fondo {
+    padding: 12px;
+  }
+
+  .sabinal-ventana {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 12px;
+  }
+
+  .sabinal-titulo {
+    font-size: 18px;
+    padding: 17px;
+  }
+
+  .sabinal-contenido {
+    padding: 18px;
+    font-size: 14px;
+  }
+
+  .sabinal-botones {
+    padding: 0 18px 18px;
+    flex-direction: column-reverse;
+  }
+
+  .sabinal-boton {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sabinal-ventana {
+    animation: none;
+  }
+
+  .sabinal-boton {
+    transition: none;
+  }
+}
