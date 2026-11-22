@@ -4566,3 +4566,95 @@
   }
 }
 
+
+
+/* =========================================
+   EL SABINAL - MEJORA DE LEGIBILIDAD
+   Ajuste compacto para computadoras
+   ========================================= */
+
+@media (min-width: 1001px) {
+
+  /* Menú lateral */
+  .menu button,
+  .menu a {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .sidebar-note {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  /* Textos explicativos */
+  .topbar p,
+  .bi-hero p,
+  .section-title-row p,
+  .dashboard-head p,
+  .dash-box-title p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* Títulos de tarjetas */
+  .card h4,
+  .section-title-row h4,
+  .dashboard-box h4 {
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  /* Descripciones pequeñas */
+  .card small,
+  .tiny-note,
+  .field-help,
+  .mini-help {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  /* Formularios */
+  .field label {
+    font-size: 13px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    font-size: 14px;
+  }
+
+  /* Botones */
+  .btn,
+  .btn-sm {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  /* Tablas */
+  .table-wrap table th {
+    font-size: 13px;
+  }
+
+  .table-wrap table td {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* Promociones */
+  .promo-card h4 {
+    font-size: 14px;
+  }
+
+  .promo-card p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* Encabezados de módulos */
+  .bi-hero h3 {
+    font-size: 20px;
+  }
+}
+
