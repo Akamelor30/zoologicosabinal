@@ -533,7 +533,30 @@
                 margin-top: 0;
                 font-size: 22px;
             }
+#sab-help .sh-imagen-tutorial {
+    margin: 20px 0;
+    padding: 12px;
+    background: #f2f6f3;
+    border: 2px solid #e4b84c;
+    border-radius: 14px;
+    overflow: hidden;
+}
 
+#sab-help .sh-imagen-tutorial img {
+    display: block;
+    width: 100%;
+    max-height: 450px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+#sab-help .sh-imagen-tutorial small {
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    color: #52665a;
+    font-size: 12px;
+}
             #sab-help .sh-step p {
                 line-height: 1.8;
                 color: #34483b;
@@ -973,6 +996,20 @@
             const total = guia.pasos.length;
 
             const ultimo = pasoActual === total - 1;
+            const imagenesReservacion = [
+    "tarifas.png",
+    "nombre.png",
+    "contacto.png",
+    "fecha.png",
+    "boletos.png",
+    "total.png",
+    "reservar.png"
+];
+
+const imagenTutorial =
+    guia.nombre === "Reservaciones en línea"
+        ? "/img/ayuda/publica/" + imagenesReservacion[pasoActual]
+        : "";
 
             contenido.innerHTML = `
 
@@ -1003,6 +1040,18 @@
                     </h3>
 
                     <p>${paso.texto}</p>
+                    ${imagenTutorial ? `
+    <div class="sh-imagen-tutorial">
+        <img
+            src="${imagenTutorial}"
+            alt="${paso.titulo}"
+            loading="lazy"
+        >
+        <small>
+            Referencia visual del sistema El Sabinal.
+        </small>
+    </div>
+` : ""}
 
                     <div class="sh-actions sh-target"></div>
 
