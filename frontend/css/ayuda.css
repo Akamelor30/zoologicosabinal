@@ -1,0 +1,569 @@
+
+/* ==================================================
+   CENTRO DE AYUDA - ZOOLÓGICO EL SABINAL
+   ================================================== */
+
+.sb-ayuda {
+    --ay-verde: #185c3b;
+    --ay-verde-oscuro: #123e2d;
+    --ay-dorado: #e4b84c;
+    --ay-fondo: #f4f7f5;
+    --ay-texto: #24382d;
+    --ay-borde: #dce6df;
+    font-family: Arial, sans-serif;
+    color: var(--ay-texto);
+}
+
+.sb-ayuda *,
+.sb-ayuda *::before,
+.sb-ayuda *::after {
+    box-sizing: border-box;
+}
+
+.sb-ayuda [hidden] {
+    display: none !important;
+}
+
+/* BOTÓN FLOTANTE */
+
+.sb-ayuda-flotante {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px 22px;
+    border: 2px solid var(--ay-dorado);
+    border-radius: 50px;
+    background: var(--ay-verde);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 20px #0003;
+    transition: transform .2s, background .2s;
+}
+
+.sb-ayuda-flotante:hover {
+    background: var(--ay-verde-oscuro);
+    transform: translateY(-3px);
+}
+
+/* FONDO DE LA VENTANA */
+
+.sb-ayuda-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(12, 30, 21, .65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+/* VENTANA PRINCIPAL */
+
+.sb-ayuda-ventana {
+    width: 1050px;
+    max-width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--ay-fondo);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px #0004;
+    animation: sbAyudaEntrada .25s ease;
+}
+
+@keyframes sbAyudaEntrada {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ENCABEZADO */
+
+.sb-ayuda-header {
+    position: relative;
+    padding: 30px;
+    background: linear-gradient(
+        135deg,
+        #123e2d,
+        #21764b
+    );
+    color: white;
+    border-bottom: 4px solid var(--ay-dorado);
+}
+
+.sb-ayuda-marca {
+    color: #f4d17b;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.sb-ayuda-header h2 {
+    margin: 0 40px 10px 0;
+    color: white;
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.sb-ayuda-header p {
+    margin: 0;
+    color: #e0eee5;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* BOTÓN CERRAR */
+
+.sb-ayuda-cerrar {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 38px;
+    height: 38px;
+    border: 1px solid #ffffff50;
+    border-radius: 10px;
+    background: #ffffff15;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.sb-ayuda-cerrar:hover {
+    background: #ffffff35;
+}
+
+/* BUSCADOR */
+
+.sb-ayuda-buscador {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+    padding: 0 16px;
+    background: white;
+    border-radius: 12px;
+    color: var(--ay-verde);
+}
+
+.sb-ayuda-buscador input {
+    width: 100%;
+    padding: 15px 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--ay-texto);
+    font-size: 15px;
+}
+
+.sb-ayuda-buscador:focus-within {
+    outline: 3px solid var(--ay-dorado);
+}
+
+/* CONTENIDO PRINCIPAL */
+
+.sb-ayuda-contenido {
+    flex: 1;
+    min-height: 0;
+    padding: 26px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.sb-ayuda-titulo {
+    margin: 0 0 8px;
+    font-size: 21px;
+    color: var(--ay-verde-oscuro);
+}
+
+.sb-ayuda-descripcion {
+    margin: 0 0 20px;
+    color: #65766b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* AYUDA DEL MÓDULO ACTUAL */
+
+.sb-ayuda-contexto {
+    padding: 18px;
+    margin-bottom: 22px;
+    border: 1px solid #d9c88c;
+    border-left: 5px solid var(--ay-dorado);
+    border-radius: 12px;
+    background: #fff9e9;
+}
+
+.sb-ayuda-contexto strong {
+    color: #66501b;
+}
+
+.sb-ayuda-contexto p {
+    margin: 8px 0 12px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* TARJETAS DE MÓDULOS */
+
+.sb-ayuda-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.sb-ayuda-tarjeta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    padding: 20px;
+    background: white;
+    border: 1px solid var(--ay-borde);
+    border-radius: 15px;
+    text-align: left;
+    color: var(--ay-texto);
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.sb-ayuda-tarjeta:hover {
+    border-color: var(--ay-verde);
+    box-shadow: 0 6px 18px #185c3b15;
+    transform: translateY(-3px);
+}
+
+.sb-ayuda-icono {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #e8f2eb;
+    font-size: 25px;
+}
+
+.sb-ayuda-tarjeta h3 {
+    margin: 0;
+    color: var(--ay-verde-oscuro);
+    font-size: 16px;
+}
+
+.sb-ayuda-tarjeta p {
+    margin: 0;
+    color: #65766b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.sb-ayuda-enlace {
+    margin-top: auto;
+    padding-top: 8px;
+    color: var(--ay-verde);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* TUTORIALES PASO A PASO */
+
+.sb-ayuda-tutorial {
+    padding: 24px;
+    background: white;
+    border: 1px solid var(--ay-borde);
+    border-radius: 16px;
+}
+
+.sb-ayuda-contador {
+    display: block;
+    margin: 15px 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ay-verde);
+}
+
+.sb-ayuda-progreso {
+    height: 8px;
+    background: #e1eae4;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.sb-ayuda-barra {
+    height: 100%;
+    width: 0;
+    border-radius: 20px;
+    background: linear-gradient(
+        90deg,
+        #185c3b,
+        #42a66d
+    );
+    transition: width .3s ease;
+}
+
+.sb-ayuda-paso {
+    min-height: 170px;
+    padding: 25px;
+    background: #f5f9f6;
+    border: 1px solid var(--ay-borde);
+    border-radius: 14px;
+}
+
+.sb-ayuda-paso h3 {
+    margin: 0 0 15px;
+    color: var(--ay-verde-oscuro);
+    font-size: 22px;
+}
+
+.sb-ayuda-paso p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+/* CAPTURAS DEL SISTEMA */
+
+.sb-ayuda-imagen {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    margin-top: 20px;
+    border: 1px solid var(--ay-borde);
+    border-radius: 12px;
+    background: white;
+}
+
+/* BOTONES DE NAVEGACIÓN */
+
+.sb-ayuda-navegacion {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.sb-ayuda-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border: 1px solid var(--ay-verde);
+    border-radius: 10px;
+    background: var(--ay-verde);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.sb-ayuda-btn:hover {
+    background: var(--ay-verde-oscuro);
+    color: white;
+}
+
+.sb-ayuda-btn-secundario {
+    background: white;
+    color: var(--ay-verde);
+}
+
+.sb-ayuda-btn-secundario:hover {
+    background: #e8f2eb;
+    color: var(--ay-verde);
+}
+
+.sb-ayuda-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.sb-ayuda button:focus-visible,
+.sb-ayuda a:focus-visible,
+.sb-ayuda summary:focus-visible {
+    outline: 3px solid var(--ay-dorado);
+    outline-offset: 3px;
+}
+
+/* PREGUNTAS FRECUENTES */
+
+.sb-ayuda-faq {
+    margin-top: 28px;
+}
+
+.sb-ayuda-faq details {
+    margin-bottom: 10px;
+    background: white;
+    border: 1px solid var(--ay-borde);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.sb-ayuda-faq summary {
+    padding: 16px;
+    color: var(--ay-verde-oscuro);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sb-ayuda-faq details[open] summary {
+    background: #e8f2eb;
+}
+
+.sb-ayuda-faq details p {
+    padding: 0 16px;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* MANUAL DESCARGABLE */
+
+.sb-ayuda-manual {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 26px;
+    padding: 20px;
+    border: 1px solid var(--ay-borde);
+    border-radius: 14px;
+    background: white;
+}
+
+.sb-ayuda-manual h3 {
+    margin: 0 0 7px;
+    color: var(--ay-verde-oscuro);
+    font-size: 17px;
+}
+
+.sb-ayuda-manual p {
+    margin: 0;
+    color: #65766b;
+    font-size: 13px;
+}
+
+/* RESALTADO DE ELEMENTOS DEL SISTEMA */
+
+.sb-ayuda-resaltado {
+    outline: 4px solid #e4b84c !important;
+    outline-offset: 4px;
+    box-shadow: 0 0 0 8px #e4b84c35 !important;
+    scroll-margin: 30px;
+}
+
+/* MENSAJE SIN RESULTADOS */
+
+.sb-ayuda-vacio {
+    grid-column: 1 / -1;
+    padding: 35px;
+    text-align: center;
+    color: #65766b;
+    background: white;
+    border: 1px dashed var(--ay-borde);
+    border-radius: 12px;
+}
+
+/* PIE DE PÁGINA */
+
+.sb-ayuda-footer {
+    padding: 15px 24px;
+    border-top: 1px solid var(--ay-borde);
+    background: white;
+    color: #65766b;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* DISEÑO RESPONSIVO */
+
+@media (max-width: 850px) {
+    .sb-ayuda-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sb-ayuda-header h2 {
+        font-size: 25px;
+    }
+}
+
+@media (max-width: 550px) {
+    .sb-ayuda-overlay {
+        padding: 8px;
+    }
+
+    .sb-ayuda-ventana {
+        max-height: 95vh;
+        border-radius: 14px;
+    }
+
+    .sb-ayuda-header {
+        padding: 22px 18px;
+    }
+
+    .sb-ayuda-header h2 {
+        font-size: 23px;
+    }
+
+    .sb-ayuda-contenido {
+        padding: 16px;
+    }
+
+    .sb-ayuda-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .sb-ayuda-tarjeta {
+        padding: 16px;
+    }
+
+    .sb-ayuda-flotante {
+        right: 14px;
+        bottom: 14px;
+        padding: 12px 18px;
+    }
+
+    .sb-ayuda-tutorial,
+    .sb-ayuda-paso {
+        padding: 16px;
+    }
+
+    .sb-ayuda-navegacion .sb-ayuda-btn {
+        flex: 1;
+    }
+
+    .sb-ayuda-manual .sb-ayuda-btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sb-ayuda *,
+    .sb-ayuda *::before,
+    .sb-ayuda *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
