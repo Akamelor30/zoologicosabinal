@@ -567,3 +567,252 @@
         transition: none !important;
     }
 }
+
+/* ================================================
+   MEJORAS DEL CENTRO DE AYUDA - DISEÑO COMPACTO
+   ================================================ */
+
+.sb-ayuda-overlay {
+    padding: 12px;
+}
+
+.sb-ayuda-ventana {
+    width: 1200px;
+    max-height: 94vh;
+    max-height: 94dvh;
+}
+
+.sb-ayuda-header {
+    padding: 18px 24px;
+    flex-shrink: 0;
+}
+
+.sb-ayuda-marca {
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.sb-ayuda-header h2 {
+    font-size: 25px;
+    margin-bottom: 5px;
+}
+
+.sb-ayuda-buscador {
+    margin-top: 12px;
+}
+
+.sb-ayuda-buscador input {
+    padding: 11px 0;
+}
+
+.sb-ayuda-contenido {
+    padding: 16px 22px;
+    min-height: 0;
+}
+
+/* TARJETAS MÁS COMPACTAS */
+
+.sb-ayuda-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.sb-ayuda-tarjeta {
+    padding: 14px;
+    gap: 7px;
+}
+
+.sb-ayuda-icono {
+    width: 38px;
+    height: 38px;
+    font-size: 21px;
+}
+
+.sb-ayuda-contexto {
+    padding: 12px 16px;
+    margin-bottom: 14px;
+}
+
+/* ENCABEZADO REDUCIDO DURANTE EL TUTORIAL */
+
+.sb-ayuda-ventana:has([data-accion="anterior"])
+.sb-ayuda-buscador,
+
+.sb-ayuda-ventana:has([data-accion="anterior"])
+.sb-ayuda-header p {
+    display: none;
+}
+
+/* TUTORIAL COMPACTO */
+
+.sb-ayuda-tutorial {
+    padding: 16px;
+}
+
+.sb-ayuda-tutorial > .sb-ayuda-icono {
+    display: none;
+}
+
+.sb-ayuda-tutorial .sb-ayuda-titulo {
+    margin-top: 0 !important;
+    font-size: 22px;
+}
+
+.sb-ayuda-tutorial .sb-ayuda-descripcion {
+    margin-bottom: 8px;
+}
+
+.sb-ayuda-contador {
+    margin: 8px 0;
+}
+
+.sb-ayuda-progreso {
+    height: 6px;
+    margin-bottom: 14px;
+}
+
+/* INSTRUCCIONES Y CAPTURA LADO A LADO */
+
+.sb-ayuda-paso {
+    min-height: 120px;
+    padding: 16px;
+}
+
+.sb-ayuda-paso h3 {
+    font-size: 19px;
+    margin-bottom: 10px;
+}
+
+.sb-ayuda-paso p {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.sb-ayuda-paso:has(.sb-ayuda-imagen:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 20px;
+    align-items: start;
+}
+
+.sb-ayuda-paso:has(.sb-ayuda-imagen:not([hidden])) h3 {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.sb-ayuda-paso:has(.sb-ayuda-imagen:not([hidden])) p {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.sb-ayuda-imagen {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 100%;
+    max-height: 260px;
+    max-height: min(260px, 34dvh);
+    margin: 0;
+    object-fit: contain;
+    border: 2px solid #e4b84c;
+    border-radius: 10px;
+    cursor: zoom-in;
+}
+
+/* BOTONES DE NAVEGACIÓN */
+
+.sb-ayuda-navegacion {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-top: 12px;
+    padding: 10px 0;
+    background: white;
+    border-top: 1px solid #dce6df;
+}
+
+.sb-ayuda-btn {
+    padding: 10px 15px;
+}
+
+.sb-ayuda-footer {
+    padding: 9px 16px;
+    flex-shrink: 0;
+}
+
+/* TABLETAS */
+
+@media (max-width: 1000px) {
+    .sb-ayuda-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* CELULARES */
+
+@media (max-width: 700px) {
+
+    .sb-ayuda-overlay {
+        padding: 6px;
+    }
+
+    .sb-ayuda-ventana {
+        max-height: 96vh;
+        max-height: 96dvh;
+    }
+
+    .sb-ayuda-header {
+        padding: 14px;
+    }
+
+    .sb-ayuda-marca {
+        padding-right: 35px;
+        font-size: 10px;
+    }
+
+    .sb-ayuda-header h2 {
+        font-size: 21px;
+    }
+
+    .sb-ayuda-contenido {
+        padding: 12px;
+    }
+
+    .sb-ayuda-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .sb-ayuda-tarjeta {
+        padding: 12px;
+    }
+
+    .sb-ayuda-tutorial {
+        padding: 12px;
+    }
+
+    .sb-ayuda-paso:has(.sb-ayuda-imagen:not([hidden])) {
+        display: block;
+    }
+
+    .sb-ayuda-imagen {
+        margin-top: 12px;
+        max-height: 220px;
+    }
+
+    .sb-ayuda-navegacion {
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .sb-ayuda-navegacion .sb-ayuda-btn {
+        flex: 1;
+    }
+}
+
+@media (max-width: 380px) {
+    .sb-ayuda-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
